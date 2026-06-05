@@ -84,3 +84,9 @@
 - Tests: Pending remote runtime verification.
 - Fixes: Docker deployment was blocked because `alex` cannot access `/var/run/docker.sock` without sudo.
 - Notes: Temporary public deployment can run Gunicorn with SQLite and eager Celery tasks, then expose it with Tailscale Funnel.
+
+### Module: Public CSRF Configuration
+
+- Completed: Added environment-driven `CSRF_TRUSTED_ORIGINS` support for public IP/port deployments.
+- Tests: Pending public login form POST verification.
+- Fixes: Public deployment reached Django but failed form submission with CSRF 403 because `http://140.136.134.141:8010` was not trusted.
