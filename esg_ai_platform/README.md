@@ -89,3 +89,22 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-large
 - 將 `DEBUG=False`，設定強隨機 `SECRET_KEY`、正式網域 `ALLOWED_HOSTS`。
 - Celery worker 建議用 systemd 或 supervisor 管理。
 - PDF 上傳檔案、AI token 成本、分析次數已預留資料欄位，可延伸 subscription 與 billing。
+
+## Docker 部署
+
+伺服器若已有 Docker，可直接使用不依賴 Docker Compose 的部署腳本：
+
+```bash
+cp deploy/env.production.example .env.production
+chmod +x deploy/run_docker.sh
+POSTGRES_PASSWORD='change-me' WEB_PORT=8000 ./deploy/run_docker.sh
+```
+
+腳本會建立：
+
+- `aixesg_postgres`：PostgreSQL 17 + pgvector
+- `aixesg_redis`：Redis
+- `aixesg_web`：Gunicorn Django web
+- `aixesg_worker`：Celery worker
+
+部署完成後可用 `http://<server-ip>:8000` 測試。

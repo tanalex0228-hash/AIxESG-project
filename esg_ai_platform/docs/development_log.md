@@ -70,3 +70,10 @@
 - Tests: `collectstatic --noinput` passed; runserver smoke returned 200 for `/accounts/register/`, `/login/`, `/static/css/app.css`, and `/static/js/dashboard.js`.
 - Fixes: Re-ran collectstatic after CSS changes so local staticfiles are current.
 - Notes: The PDF template intentionally uses inline CSS for WeasyPrint rendering.
+
+### Module: Docker Deployment
+
+- Completed: Added Dockerfile, production environment example, and a Docker-only deploy script that does not require Docker Compose.
+- Tests: Pending server-side build and deployment on `financial-lab`.
+- Fixes: Chose pure Docker deployment because the target server has Docker but does not have `docker compose`, and sudo requires a password.
+- Notes: Deployment target is reachable by SSH at `alex@100.72.157.21`.
