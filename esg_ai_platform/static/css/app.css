@@ -1,0 +1,132 @@
+body {
+  background: #f6f7f9;
+  color: #18202b;
+  font-size: 16px;
+}
+
+.navbar {
+  min-height: 60px;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid #d9dee7;
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.panel.narrow {
+  max-width: 780px;
+  margin-inline: auto;
+}
+
+.metric {
+  background: #fff;
+  border: 1px solid #d9dee7;
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 92px;
+}
+
+.metric span {
+  display: block;
+  color: #697386;
+  font-size: .9rem;
+  margin-bottom: 8px;
+}
+
+.metric strong {
+  display: block;
+  font-size: 1.7rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.quote-cell {
+  max-width: 520px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.table {
+  --bs-table-bg: transparent;
+}
+
+.table th {
+  color: #475467;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+form p {
+  margin-bottom: 14px;
+}
+
+form p label {
+  display: block;
+  font-weight: 650;
+  margin-bottom: 5px;
+}
+
+form p input,
+form p select,
+form p textarea {
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid #c9d1d9;
+  border-radius: 6px;
+  padding: 9px 11px;
+  background: #fff;
+}
+
+form p input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
+form p:has(input[type="checkbox"]) label {
+  display: inline;
+  font-weight: 600;
+}
+
+form .helptext {
+  display: block;
+  color: #697386;
+  font-size: .875rem;
+  margin-top: 4px;
+}
+
+form ul.errorlist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 6px;
+  color: #b42318;
+  font-size: .9rem;
+}
+
+.btn {
+  border-radius: 6px;
+  font-weight: 650;
+}
+
+@media (max-width: 576px) {
+  main.container-fluid {
+    padding-inline: 12px;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .metric strong {
+    font-size: 1.35rem;
+  }
+}

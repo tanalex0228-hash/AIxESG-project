@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}新增資料{% endblock %}
+{% block content %}
+<section class="panel narrow">
+  <h1 class="h4 mb-3">新增 {{ item_type }}</h1>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn btn-primary">儲存</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}註冊帳號 | AI ESG 智慧診斷{% endblock %}
+{% block content %}
+<section class="panel narrow">
+  <h1 class="h4 mb-3">註冊帳號</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn btn-primary" type="submit">建立帳號</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: sans-serif; color: #18202b; line-height: 1.5; }
+    h1, h2 { color: #0f5132; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    th, td { border: 1px solid #d0d7de; padding: 6px; vertical-align: top; }
+    th { background: #eef6f1; }
+    .cover { min-height: 520px; display: flex; flex-direction: column; justify-content: center; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <h1>GRI 305 永續報告書智慧診斷</h1>
+    <p>{{ report.company_name }} · {{ report.report_year }}</p>
+    <p>分析時間：{{ analysis.analyzed_at }}</p>
+  </section>
+  <h2>總覽</h2>
+  <p>總分：{{ analysis.total_score }}；信心分數：{{ analysis.confidence_score }}</p>
+  <p>{{ analysis.summary }}</p>
+  <h2>305-1～305-5 分項分數</h2>
+  <table><thead><tr><th>GRI</th><th>狀態</th><th>原始分</th><th>加權分</th><th>摘要</th></tr></thead><tbody>{% for score in analysis.disclosure_scores.all %}<tr><td>{{ score.disclosure_code }}</td><td>{{ score.status }}</td><td>{{ score.raw_score }}</td><td>{{ score.weighted_score }}</td><td>{{ score.summary }}</td></tr>{% endfor %}</tbody></table>
+  <h2>缺漏診斷</h2>
+  <table><thead><tr><th>GRI</th><th>缺漏</th><th>說明</th></tr></thead><tbody>{% for item in analysis.missing_items.all %}<tr><td>{{ item.disclosure_code }}</td><td>{{ item.item_name }}</td><td>{{ item.description }}</td></tr>{% endfor %}</tbody></table>
+  <h2>詳細引用來源</h2>
+  <table><thead><tr><th>GRI</th><th>頁碼</th><th>引用</th><th>判斷</th></tr></thead><tbody>{% for citation in analysis.evidence_citations.all %}<tr><td>{{ citation.disclosure_code }}</td><td>{{ citation.page_number }}</td><td>{{ citation.quoted_text }}</td><td>{{ citation.normalized_finding }}</td></tr>{% endfor %}</tbody></table>
+  <h2>改善行動計畫</h2>
+  <table><thead><tr><th>GRI</th><th>期間</th><th>建議</th></tr></thead><tbody>{% for item in analysis.recommendations.all %}<tr><td>{{ item.disclosure_code }}</td><td>{{ item.term }}</td><td>{{ item.recommendation }}</td></tr>{% endfor %}</tbody></table>
+  <h2>免責聲明</h2>
+  <p>本報告為 AI 輔助診斷結果，應由企業永續、財會、法務與確信相關專業人員進行最終審閱。</p>
+</body>
+</html>
