@@ -77,3 +77,10 @@
 - Tests: Pending server-side build and deployment on `financial-lab`.
 - Fixes: Chose pure Docker deployment because the target server has Docker but does not have `docker compose`, and sudo requires a password.
 - Notes: Deployment target is reachable by SSH at `alex@100.72.157.21`.
+
+### Module: Public Fallback Deployment
+
+- Completed: Added `CELERY_TASK_ALWAYS_EAGER` environment support for temporary public deployments where Docker/Redis permissions are not available yet.
+- Tests: Pending remote runtime verification.
+- Fixes: Docker deployment was blocked because `alex` cannot access `/var/run/docker.sock` without sudo.
+- Notes: Temporary public deployment can run Gunicorn with SQLite and eager Celery tasks, then expose it with Tailscale Funnel.
