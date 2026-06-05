@@ -1,0 +1,13 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+db.sqlite3
+staticfiles/
+media/uploaded_reports/*
+media/generated_reports/*
+media/extracted_pages/*
+!media/uploaded_reports/.gitkeep
+!media/generated_reports/.gitkeep
+!media/extracted_pages/.gitkeep
