@@ -1,6 +1,4 @@
 import csv
-import re
-from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -40,16 +38,6 @@ def _reanalyzable_reports(user):
     return Report.objects.filter(organization=organization)
 
 
-def _numeric_value(value):
-    match = re.search(r"-?\d[\d,]*(?:\.\d+)?", value or "")
-    if not match:
-        return None
-    try:
-        return Decimal(match.group(0).replace(",", ""))
-    except InvalidOperation:
-        return None
-
-
 def _field_meaning(field):
     if field.recommendation_template:
         return field.recommendation_template
@@ -82,24 +70,10 @@ def _comparison_rows(reports):
         label = field.field_label
         key = (field.disclosure_code, label)
         disclosures = []
-        values = []
         for report in reports:
-            field_result = field_results_by_report.get(report.id, {}).get(key, {})
-            detected_value = field_result.get("detected_value", "")
-            numeric_value = _numeric_value(detected_value)
             is_missing = key in report_missing.get(report.id, set())
             if not is_missing:
                 disclosures.append(f"{report.company_name} {report.report_year}")
-            if numeric_value is not None:
-                values.append(
-                    {
-                        "company": report.company_name,
-                        "year": report.report_year,
-                        "value": float(numeric_value),
-                        "raw_value": detected_value,
-                    }
-                )
-        max_value = max((item["value"] for item in values), default=0)
         cells = []
         for report in reports:
             status = "missing" if key in report_missing.get(report.id, set()) else "complete"
@@ -111,19 +85,10 @@ def _comparison_rows(reports):
                 "status": status,
                 "disclosure_code": field.disclosure_code,
                 "field_label": label,
-                "value": field_result.get("detected_value", ""),
                 "page_number": field_result.get("page_number"),
                 "evidence_excerpt": field_result.get("evidence_excerpt", ""),
                 "meaning": _field_meaning(field),
                 "disclosed_companies": disclosures,
-                "distribution": [
-                    {
-                        **item,
-                        "percent": round((item["value"] / max_value) * 100, 1) if max_value else 0,
-                        "current": item["company"] == report.company_name and item["year"] == report.report_year,
-                    }
-                    for item in values
-                ],
             }
             cells.append(
                 {

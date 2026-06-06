@@ -15,32 +15,20 @@ function escapeHtml(value) {
 }
 
 function comparisonTooltipMarkup(data) {
-  const value = escapeHtml(data.value || "未擷取到明確數值");
   const page = escapeHtml(data.page_number || "-");
   const companies = data.disclosed_companies || [];
-  const distribution = data.distribution || [];
   const tags = companies.length
     ? companies.map((company) => `<em>${escapeHtml(company)}</em>`).join("")
     : "<em>目前選取報告中尚無其他公司揭露</em>";
-  const bars = distribution.length
-    ? distribution.map((item) => {
-      const height = Math.max(8, Math.round(item.percent || 0));
-      const active = item.current ? " current" : "";
-      return `<div class="distribution-bar${active}"><i style="height:${height}%"></i><small title="${escapeHtml(item.company)}">${escapeHtml(item.company)}</small></div>`;
-    }).join("")
-    : "<p>沒有足夠數值可建立分布圖。</p>";
   return `
     <h3>${escapeHtml(data.company)} ${escapeHtml(data.year)} · ${escapeHtml(data.disclosure_code)}</h3>
     <p>${escapeHtml(data.field_label)}</p>
     <div class="tooltip-grid">
       <div><span>揭露狀態</span><strong>${escapeHtml(data.status)}</strong></div>
-      <div><span>擷取數值</span><strong>${value}</strong></div>
       <div><span>頁碼</span><strong>${page}</strong></div>
-      <div><span>指標</span><strong>${escapeHtml(data.field_label)}</strong></div>
     </div>
     <div class="tooltip-section"><span>指標意義</span><p>${escapeHtml(data.meaning || "此欄位用於衡量報告書揭露完整度與可驗證性。")}</p></div>
     <div class="tooltip-section"><span>同樣有揭露的公司</span><div class="tooltip-tags">${tags}</div></div>
-    <div class="tooltip-section"><span>相對數值分布</span><div class="distribution-bars">${bars}</div></div>
     <div class="tooltip-section"><span>報告書引用</span><p>${escapeHtml(data.evidence_excerpt || "此公司報告未找到該欄位的明確揭露。")}</p></div>
   `;
 }

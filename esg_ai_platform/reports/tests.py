@@ -135,7 +135,7 @@ class ReportUploadTests(TestCase):
         self.assertEqual(csv_response.status_code, 200)
         self.assertIn("text/csv", csv_response["Content-Type"])
 
-    def test_compare_page_shows_detected_field_value_for_hover_context(self):
+    def test_compare_page_shows_evidence_excerpt_for_hover_context(self):
         GRIRequiredField.objects.create(
             disclosure_code="305-1",
             field_key="S1_Total_Emissions",
@@ -198,9 +198,10 @@ class ReportUploadTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "comparison-tooltip-data")
         self.assertContains(response, "1,234 tCO2e")
-        self.assertContains(response, "2,500 tCO2e")
         self.assertContains(response, "Peer B 2025")
         self.assertContains(response, "data-comparison-tooltip")
+        self.assertNotContains(response, "<small>1,234 tCO2e</small>")
+        self.assertNotContains(response, "distribution")
 
     def test_download_original_and_generated_reports(self):
         report = Report.objects.create(

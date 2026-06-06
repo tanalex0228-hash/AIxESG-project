@@ -141,3 +141,10 @@
 - Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, and `manage.py test --noinput` passed with 22 tests.
 - Fixes: Ranking, comparison, dashboard, report detail, and admin data tables can now expose overflow content on narrow screens; comparison cells now provide richer context instead of only complete/missing labels.
 - Notes: Tooltip data is generated server-side from the latest rule-engine field evidence and rendered from escaped JSON for safer browser display.
+
+### Module: Comparison Evidence Tooltip Simplification
+
+- Completed: Removed noisy extracted values from comparison matrix pills; simplified the comparison tooltip to focus on report evidence excerpts and peer companies that also disclose the same indicator.
+- Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, and `manage.py test --noinput` passed with 22 tests.
+- Fixes: Removed the misleading numeric distribution view because many ESG indicators are qualitative or narrative evidence rather than comparable quantities.
+- Notes: Rule-engine detected values may still exist internally in field evidence, but the comparison UI no longer presents them as standalone metrics.
