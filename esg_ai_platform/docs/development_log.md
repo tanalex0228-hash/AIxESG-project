@@ -99,3 +99,10 @@
 - Tests: `makemigrations`, `migrate`, knowledge-base import, 桓達企業 smoke pipeline, `ruff check .`, `mypy .`, `manage.py check`, `manage.py test --noinput`, PostgreSQL connection, Redis ping, Django runserver, and Celery worker startup passed.
 - Fixes: Replaced GPT/agent-derived scoring entry point with a deterministic rule-engine wrapper while preserving the existing `run_gri_305_analysis(report)` interface; expanded Scope 3 category keyword matching for underscore-style benchmark fields.
 - Notes: The official 桓達 PDF is not present in the workspace, so the smoke script generates a named 桓達企業 test PDF for pipeline validation.
+
+### Module: Apple-Inspired SaaS Frontend Refresh
+
+- Completed: Reworked shared navigation, dashboard, auth, report, upload, and admin templates into a cleaner Apple-inspired SaaS visual system with glass navigation, restrained panels, metric cards, pill controls, and consistent table/form styling.
+- Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, `manage.py test --noinput`, and Django route smoke tests for login, registration, static CSS, dashboard, report list, upload redirect, and admin panel passed.
+- Fixes: Applied visual styling through shared CSS and per-page structure so the refresh is not limited to a single page.
+- Notes: The design direction adapts the provided Apple reference into an operational ESG SaaS interface instead of copying consumer-product page markup.

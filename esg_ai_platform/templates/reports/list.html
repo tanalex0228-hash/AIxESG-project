@@ -1,15 +1,27 @@
 {% extends "base.html" %}
 {% block title %}報告書{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4">報告書</h1>
-  <a class="btn btn-primary" href="{% url 'reports:upload' %}">上傳</a>
+<div class="page-hero compact">
+  <div>
+    <div class="eyebrow">Reports</div>
+    <h1 class="page-title small">報告書資料庫</h1>
+    <p class="page-subtitle">追蹤所有企業報告、解析進度與分析任務狀態。</p>
+  </div>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="{% url 'reports:upload' %}">上傳</a>
+  </div>
 </div>
 <section class="panel">
-  <div class="table-responsive">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">分析紀錄</h2>
+      <p class="panel-kicker">每份報告都會保留進度與歷史結果</p>
+    </div>
+  </div>
+  <div class="table-responsive table-shell">
     <table class="table">
       <thead><tr><th>公司</th><th>年度</th><th>標題</th><th>狀態</th><th>進度</th></tr></thead>
-      <tbody>{% for report in reports %}<tr><td>{{ report.company_name }}</td><td>{{ report.report_year }}</td><td><a href="{% url 'reports:detail' report.pk %}">{{ report.title }}</a></td><td>{{ report.status }}</td><td>{{ report.analysis_job.progress|default:0 }}%</td></tr>{% empty %}<tr><td colspan="5">尚未上傳報告書。</td></tr>{% endfor %}</tbody>
+      <tbody>{% for report in reports %}<tr><td>{{ report.company_name }}</td><td>{{ report.report_year }}</td><td><a href="{% url 'reports:detail' report.pk %}">{{ report.title }}</a></td><td><span class="status-pill">{{ report.status }}</span></td><td>{{ report.analysis_job.progress|default:0 }}%</td></tr>{% empty %}<tr><td colspan="5">尚未上傳報告書。</td></tr>{% endfor %}</tbody>
     </table>
   </div>
 </section>

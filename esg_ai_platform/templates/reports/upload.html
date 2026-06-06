@@ -1,8 +1,20 @@
 {% extends "base.html" %}
 {% block title %}上傳報告書{% endblock %}
 {% block content %}
+<div class="page-hero compact">
+  <div>
+    <div class="eyebrow">Report Intake</div>
+    <h1 class="page-title small">上傳永續報告書 PDF</h1>
+    <p class="page-subtitle">系統會解析 PDF、建立向量、執行 GRI 305 規則評分與同業標竿分析。</p>
+  </div>
+</div>
 <section class="panel narrow">
-  <h1 class="h4 mb-3">上傳永續報告書 PDF</h1>
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">建立分析任務</h2>
+      <p class="panel-kicker">支援企業永續報告書與 GRI 305 碳揭露章節</p>
+    </div>
+  </div>
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}

@@ -1,8 +1,20 @@
 {% extends "base.html" %}
 {% block title %}註冊帳號 | AI ESG 智慧診斷{% endblock %}
 {% block content %}
+<div class="page-hero compact">
+  <div>
+    <div class="eyebrow">Identity Setup</div>
+    <h1 class="page-title small">建立你的 AIxESG 帳號</h1>
+    <p class="page-subtitle">依使用者類型建立權限與備援聯絡資料，後續操作會保留稽核紀錄。</p>
+  </div>
+</div>
 <section class="panel narrow">
-  <h1 class="h4 mb-3">註冊帳號</h1>
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">註冊資料</h2>
+      <p class="panel-kicker">請填寫完整身份與聯絡資訊</p>
+    </div>
+  </div>
   <form method="post">
     {% csrf_token %}
     {{ form.as_p }}

@@ -1,19 +1,33 @@
 {% extends "base.html" %}
 {% block title %}管理後台{% endblock %}
 {% block content %}
-<h1 class="h4 mb-3">管理後台</h1>
-<div class="quick-actions mb-3">
-  <a class="btn btn-outline-primary btn-sm" href="{% url 'admin_panel:create' 'disclosure' %}">新增 GRI 條文</a>
-  <a class="btn btn-outline-primary btn-sm" href="{% url 'admin_panel:create' 'check-item' %}">新增檢查項目</a>
-  <a class="btn btn-outline-primary btn-sm" href="{% url 'admin_panel:create' 'weight' %}">調整權重</a>
-  <a class="btn btn-outline-primary btn-sm" href="{% url 'admin_panel:create' 'rule' %}">新增評分規則</a>
-  <a class="btn btn-outline-primary btn-sm" href="{% url 'admin_panel:create' 'benchmark-company' %}">新增標竿公司</a>
-  <a class="btn btn-outline-primary btn-sm" href="{% url 'admin_panel:create' 'best-practice' %}">新增標竿案例</a>
+<div class="page-hero compact">
+  <div>
+    <div class="eyebrow">System Governance</div>
+    <h1 class="page-title small">管理後台</h1>
+    <p class="page-subtitle">維護 GRI 條文、評分規則、標竿公司與分析任務狀態。</p>
+  </div>
+</div>
+<div class="panel mb-3">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">快速建立</h2>
+      <p class="panel-kicker">系統管理者可維護全站規則與標竿資料</p>
+    </div>
+  </div>
+  <div class="quick-actions">
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'admin_panel:create' 'disclosure' %}">新增 GRI 條文</a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'admin_panel:create' 'check-item' %}">新增檢查項目</a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'admin_panel:create' 'weight' %}">調整權重</a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'admin_panel:create' 'rule' %}">新增評分規則</a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'admin_panel:create' 'benchmark-company' %}">新增標竿公司</a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'admin_panel:create' 'best-practice' %}">新增標竿案例</a>
+  </div>
 </div>
 <div class="row g-3">
-  <div class="col-lg-6"><section class="panel"><h2 class="h5">GRI 條文</h2><table class="table table-sm"><tbody>{% for item in disclosures %}<tr><td>{{ item.disclosure_code }}</td><td>{{ item.disclosure_name }}</td><td>{{ item.weight }}%</td></tr>{% endfor %}</tbody></table></section></div>
-  <div class="col-lg-6"><section class="panel"><h2 class="h5">標竿公司</h2><table class="table table-sm"><tbody>{% for item in companies %}<tr><td>{{ item.name }}</td><td>{{ item.industry }}</td><td>{{ item.is_active }}</td></tr>{% endfor %}</tbody></table></section></div>
-  <div class="col-lg-6"><section class="panel"><h2 class="h5">RAG 檢索紀錄</h2><table class="table table-sm"><tbody>{% for item in retrieval_logs %}<tr><td>{{ item.disclosure_code }}</td><td>{{ item.query|truncatechars:60 }}</td><td>{{ item.created_at }}</td></tr>{% endfor %}</tbody></table></section></div>
-  <div class="col-lg-6"><section class="panel"><h2 class="h5">AI 分析任務</h2><table class="table table-sm"><tbody>{% for item in analysis_jobs %}<tr><td>{{ item.report }}</td><td>{{ item.status }}</td><td>{{ item.error_message|truncatechars:50 }}</td></tr>{% endfor %}</tbody></table></section></div>
+  <div class="col-lg-6"><section class="panel"><div class="panel-header"><div><h2 class="panel-title">GRI 條文</h2><p class="panel-kicker">揭露項目與權重</p></div></div><div class="table-responsive table-shell"><table class="table table-sm"><tbody>{% for item in disclosures %}<tr><td>{{ item.disclosure_code }}</td><td>{{ item.disclosure_name }}</td><td>{{ item.weight }}%</td></tr>{% endfor %}</tbody></table></div></section></div>
+  <div class="col-lg-6"><section class="panel"><div class="panel-header"><div><h2 class="panel-title">標竿公司</h2><p class="panel-kicker">同業比較資料來源</p></div></div><div class="table-responsive table-shell"><table class="table table-sm"><tbody>{% for item in companies %}<tr><td>{{ item.name }}</td><td>{{ item.industry }}</td><td><span class="status-pill">{{ item.is_active }}</span></td></tr>{% endfor %}</tbody></table></div></section></div>
+  <div class="col-lg-6"><section class="panel"><div class="panel-header"><div><h2 class="panel-title">RAG 檢索紀錄</h2><p class="panel-kicker">最近一次知識庫查詢</p></div></div><div class="table-responsive table-shell"><table class="table table-sm"><tbody>{% for item in retrieval_logs %}<tr><td>{{ item.disclosure_code }}</td><td>{{ item.query|truncatechars:60 }}</td><td>{{ item.created_at }}</td></tr>{% endfor %}</tbody></table></div></section></div>
+  <div class="col-lg-6"><section class="panel"><div class="panel-header"><div><h2 class="panel-title">AI 分析任務</h2><p class="panel-kicker">任務狀態與錯誤訊息</p></div></div><div class="table-responsive table-shell"><table class="table table-sm"><tbody>{% for item in analysis_jobs %}<tr><td>{{ item.report }}</td><td><span class="status-pill">{{ item.status }}</span></td><td>{{ item.error_message|truncatechars:50 }}</td></tr>{% endfor %}</tbody></table></div></section></div>
 </div>
 {% endblock %}
