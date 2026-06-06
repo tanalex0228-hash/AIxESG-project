@@ -13,7 +13,7 @@ from organizations.models import Organization
 
 from .forms import ReportUploadForm
 from .models import AnalysisJob, Report
-from .tasks import parse_pdf_task
+from .tasks import parse_pdf_task, reanalyze_report_task
 
 
 def _accessible_reports(user):
@@ -27,17 +27,37 @@ def _accessible_reports(user):
     return Report.objects.filter(organization=organization)
 
 
+def _reanalyzable_reports(user):
+    if is_system_admin_user(user):
+        return Report.objects.all()
+    if is_individual_user(user):
+        return Report.objects.none()
+    organization = get_user_organization(user)
+    if not organization:
+        return Report.objects.none()
+    return Report.objects.filter(organization=organization)
+
+
 def _comparison_rows(reports):
     required_fields = list(GRIRequiredField.objects.filter(is_active=True, is_required=True).order_by("disclosure_code", "sort_order"))
+    field_results_by_report = {}
     report_missing = {
         report.id: {
             (item.disclosure_code, item.item_name)
             for item in report.analysis_result.missing_items.all()
         }
-        if hasattr(report, "analysis_result")
+        if report.analysis_result
         else set()
         for report in reports
     }
+    for report in reports:
+        result = report.analysis_result
+        field_map = {}
+        if result:
+            for disclosure_score in result.disclosure_scores.all():
+                for field_result in disclosure_score.agent_output.get("field_results", []):
+                    field_map[(disclosure_score.disclosure_code, field_result.get("field_label", ""))] = field_result
+        field_results_by_report[report.id] = field_map
     rows = []
     for field in required_fields:
         label = field.field_label
@@ -50,6 +70,7 @@ def _comparison_rows(reports):
                     {
                         "report": report,
                         "status": "missing" if key in report_missing.get(report.id, set()) else "complete",
+                        "field_result": field_results_by_report.get(report.id, {}).get(key, {}),
                     }
                     for report in reports
                 ],
@@ -60,7 +81,7 @@ def _comparison_rows(reports):
 
 @login_required
 def report_list(request):
-    reports = _accessible_reports(request.user).select_related("analysis_job", "analysis_result", "organization")
+    reports = _accessible_reports(request.user).select_related("latest_analysis_job", "latest_analysis_result", "organization")
     company = request.GET.get("company", "").strip()
     year = request.GET.get("year", "").strip()
     status = request.GET.get("status", "").strip()
@@ -116,7 +137,9 @@ def upload_report(request):
         if form.is_valid():
             report = form.save_with_file(organization=organization, user=request.user)
             job = AnalysisJob.objects.create(report=report, status="uploaded")
-            async_result = parse_pdf_task.delay(report.id)
+            report.latest_analysis_job = job
+            report.save(update_fields=["latest_analysis_job", "updated_at"])
+            async_result = parse_pdf_task.delay(report.id, job.id)
             job.celery_task_id = async_result.id
             job.save(update_fields=["celery_task_id"])
             messages.success(request, "報告書已上傳，系統已開始背景分析。")
@@ -139,12 +162,37 @@ def upload_report(request):
 @login_required
 def report_detail(request, pk):
     report = get_object_or_404(
-        _accessible_reports(request.user).select_related("analysis_result", "analysis_job", "organization"),
+        _accessible_reports(request.user).select_related("latest_analysis_result", "latest_analysis_job", "organization"),
         pk=pk,
     )
-    analysis_result = getattr(report, "analysis_result", None)
+    analysis_result = report.analysis_result
     generated_report = GeneratedReport.objects.filter(analysis_result=analysis_result).last() if analysis_result else None
-    return render(request, "reports/detail.html", {"report": report, "generated_report": generated_report})
+    analysis_history = report.analysis_results.select_related("analysis_job").all()
+    return render(
+        request,
+        "reports/detail.html",
+        {
+            "report": report,
+            "generated_report": generated_report,
+            "analysis_history": analysis_history,
+            "can_reanalyze": _reanalyzable_reports(request.user).filter(pk=report.pk).exists(),
+        },
+    )
+
+
+@login_required
+def reanalyze_report(request, pk):
+    if request.method != "POST":
+        return redirect("reports:detail", pk=pk)
+    report = get_object_or_404(_reanalyzable_reports(request.user).select_related("organization"), pk=pk)
+    job = AnalysisJob.objects.create(report=report, status="uploaded", purpose=AnalysisJob.PURPOSE_REANALYSIS)
+    report.latest_analysis_job = job
+    report.save(update_fields=["latest_analysis_job", "updated_at"])
+    async_result = reanalyze_report_task.delay(report.id, job.id)
+    job.celery_task_id = async_result.id
+    job.save(update_fields=["celery_task_id"])
+    messages.success(request, "已開始重新分析，系統會使用既有 PDF 與最新 GRI 305 規則重新產生結果。")
+    return redirect("reports:status", pk=report.pk)
 
 
 @login_required
@@ -158,8 +206,8 @@ def download_original_report(request, pk):
 
 @login_required
 def download_generated_report(request, pk):
-    report = get_object_or_404(_accessible_reports(request.user).select_related("analysis_result"), pk=pk)
-    generated = GeneratedReport.objects.filter(analysis_result=getattr(report, "analysis_result", None)).last()
+    report = get_object_or_404(_accessible_reports(request.user).select_related("latest_analysis_result"), pk=pk)
+    generated = GeneratedReport.objects.filter(analysis_result=report.analysis_result).last()
     if not generated or not generated.file:
         raise Http404("Generated report not found.")
     filename = generated.file.name.rsplit("/", 1)[-1]
@@ -169,7 +217,7 @@ def download_generated_report(request, pk):
 @login_required
 def report_status(request, pk):
     report = get_object_or_404(
-        _accessible_reports(request.user).select_related("analysis_job", "analysis_result", "organization"),
+        _accessible_reports(request.user).select_related("latest_analysis_job", "latest_analysis_result", "organization"),
         pk=pk,
     )
     return render(request, "reports/status.html", {"report": report})
@@ -178,10 +226,10 @@ def report_status(request, pk):
 @login_required
 def report_status_json(request, pk):
     report = get_object_or_404(
-        _accessible_reports(request.user).select_related("analysis_job", "analysis_result"),
+        _accessible_reports(request.user).select_related("latest_analysis_job", "latest_analysis_result"),
         pk=pk,
     )
-    job = getattr(report, "analysis_job", None)
+    job = report.analysis_job
     status = job.status if job else report.status
     progress = job.progress if job else 0
     return JsonResponse(
@@ -201,9 +249,9 @@ def report_status_json(request, pk):
 def compare_reports(request):
     reports_qs = (
         _accessible_reports(request.user)
-        .filter(analysis_result__isnull=False)
-        .select_related("analysis_result", "organization")
-        .prefetch_related("analysis_result__missing_items")
+        .filter(latest_analysis_result__isnull=False)
+        .select_related("latest_analysis_result", "organization")
+        .prefetch_related("latest_analysis_result__missing_items", "latest_analysis_result__disclosure_scores")
         .order_by("-created_at")
     )
     selected_ids = [int(value) for value in request.GET.getlist("report_ids") if value.isdigit()]
@@ -236,9 +284,9 @@ def compare_reports(request):
 def ranking_reports(request):
     reports = (
         _accessible_reports(request.user)
-        .filter(analysis_result__isnull=False)
-        .select_related("analysis_result", "organization")
-        .order_by("-analysis_result__total_score", "-report_year", "company_name")
+        .filter(latest_analysis_result__isnull=False)
+        .select_related("latest_analysis_result", "organization")
+        .order_by("-latest_analysis_result__total_score", "-report_year", "company_name")
     )
     company = request.GET.get("company", "").strip()
     year = request.GET.get("year", "").strip()

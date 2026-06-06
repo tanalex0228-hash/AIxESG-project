@@ -13,13 +13,13 @@ def intro(request):
 def index(request):
     organization = get_user_organization(request.user)
     if is_system_admin_user(request.user):
-        reports = Report.objects.all().select_related("analysis_result", "organization")
+        reports = Report.objects.all().select_related("latest_analysis_result", "organization")
         public_reports = reports.filter(status="completed")
     elif is_individual_user(request.user):
         reports = Report.objects.none()
-        public_reports = Report.objects.filter(status="completed").select_related("analysis_result", "organization")
+        public_reports = Report.objects.filter(status="completed").select_related("latest_analysis_result", "organization")
     else:
-        reports = Report.objects.filter(organization=organization).select_related("analysis_result", "organization") if organization else Report.objects.none()
+        reports = Report.objects.filter(organization=organization).select_related("latest_analysis_result", "organization") if organization else Report.objects.none()
         public_reports = Report.objects.none()
     latest_result = None
     latest_report = reports.first() if reports else None

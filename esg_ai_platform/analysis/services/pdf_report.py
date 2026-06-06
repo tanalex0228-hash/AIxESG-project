@@ -9,7 +9,7 @@ from analysis.models import GeneratedReport
 
 def generate_pdf_report(analysis_result):
     html = render_to_string("pdf/gri_305_report.html", {"analysis": analysis_result, "report": analysis_result.report})
-    filename = f"gri_305_analysis_{analysis_result.report_id}.pdf"
+    filename = f"gri_305_analysis_{analysis_result.report_id}_v{analysis_result.version_number}.pdf"
     generated = GeneratedReport.objects.create(analysis_result=analysis_result, html_snapshot=html)
 
     try:

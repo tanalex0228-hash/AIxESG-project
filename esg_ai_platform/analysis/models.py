@@ -1,10 +1,19 @@
 from django.db import models
 
-from reports.models import Report, ReportChunk
+from reports.models import AnalysisJob, Report, ReportChunk
 
 
 class AnalysisResult(models.Model):
-    report = models.OneToOneField(Report, on_delete=models.CASCADE, related_name="analysis_result")
+    report = models.ForeignKey(Report, on_delete=models.CASCADE, related_name="analysis_results")
+    analysis_job = models.OneToOneField(
+        AnalysisJob,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="analysis_result",
+    )
+    version_number = models.PositiveIntegerField(default=1)
+    is_latest = models.BooleanField(default=True, db_index=True)
     total_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     confidence_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     summary = models.TextField(blank=True)
@@ -14,8 +23,18 @@ class AnalysisResult(models.Model):
     analyzed_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ["-version_number", "-analyzed_at"]
+        unique_together = ("report", "version_number")
+
     def __str__(self):
-        return f"{self.report} analysis"
+        return f"{self.report} analysis v{self.version_number}"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.is_latest and self.report_id:
+            AnalysisResult.objects.filter(report_id=self.report_id, is_latest=True).exclude(pk=self.pk).update(is_latest=False)
+            Report.objects.filter(pk=self.report_id).update(latest_analysis_result=self)
 
 
 class DisclosureScore(models.Model):

@@ -52,7 +52,15 @@
             <td>{{ row.disclosure_code }}</td>
             <td>{{ row.field_label }}</td>
             {% for cell in row.cells %}
-              <td><span class="matrix-pill {{ cell.status }}">{{ cell.status }}</span></td>
+              <td>
+                <span
+                  class="matrix-pill {{ cell.status }}"
+                  title="{% if cell.field_result.evidence_excerpt %}頁碼 {{ cell.field_result.page_number|default:'-' }}；數值 {{ cell.field_result.detected_value|default:'未擷取到明確數值' }}；{{ cell.field_result.evidence_excerpt }}{% else %}此報告未找到 {{ row.field_label }} 的明確揭露。{% endif %}"
+                >
+                  {{ cell.status }}
+                  {% if cell.field_result.detected_value %}<small>{{ cell.field_result.detected_value }}</small>{% endif %}
+                </span>
+              </td>
             {% endfor %}
           </tr>
         {% empty %}

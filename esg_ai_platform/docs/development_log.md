@@ -127,3 +127,10 @@
 - Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, `manage.py test --noinput`, score-variance shell check, 桓達企業 smoke pipeline, and route smoke tests for ranking/original PDF/generated PDF downloads passed.
 - Fixes: Different reports no longer collapse into identical scores under the rule engine; generic “請補充...” recommendations were replaced with concrete disclosure value and action guidance per field.
 - Notes: Uploaded company PDFs are already stored through `ReportFile.pdf_file`; downloads now go through permission-checked Django views rather than direct media URLs.
+
+### Module: Reanalysis Versions and Comparison Evidence
+
+- Completed: Added report reanalysis without re-uploading PDFs; converted analysis jobs/results to versioned history while keeping `Report.latest_analysis_job` and `Report.latest_analysis_result` as the current view; added a protected reanalysis action on report detail pages; added analysis version history; added comparison matrix hover/value context from rule-engine field evidence.
+- Tests: `makemigrations --check --dry-run`, `manage.py migrate`, `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, and `manage.py test --noinput` passed with 22 tests.
+- Fixes: Previous `AnalysisResult` records are no longer overwritten by the rule engine; reanalysis creates a new `AnalysisJob` and a new `AnalysisResult` version, and individual public viewers cannot reanalyze reports they only have read access to.
+- Notes: Reanalysis reuses existing parsed pages, chunks, and embeddings when present, and automatically fills missing parse/OCR/embedding steps before running the latest GRI 305 rule engine.

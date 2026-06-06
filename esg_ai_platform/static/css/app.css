@@ -128,6 +128,10 @@ a:hover {
   gap: 10px;
 }
 
+.hero-actions form {
+  margin: 0;
+}
+
 .panel,
 .metric,
 .table-shell,
@@ -864,9 +868,22 @@ form ul.errorlist {
 .matrix-pill {
   border-radius: 999px;
   display: inline-flex;
+  flex-direction: column;
   font-size: .78rem;
   font-weight: 760;
+  line-height: 1.15;
+  min-width: 78px;
   padding: 6px 10px;
+}
+
+.matrix-pill small {
+  display: block;
+  font-size: .68rem;
+  max-width: 120px;
+  opacity: .8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .matrix-pill.complete {

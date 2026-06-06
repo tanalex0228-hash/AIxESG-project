@@ -62,6 +62,11 @@ def _numeric_signal(text):
     return bool(re.search(r"\d[\d,]*(?:\.\d+)?\s*(?:tco2e|公噸|噸|%)?", text, re.IGNORECASE))
 
 
+def _detected_value(text):
+    match = re.search(r"\d[\d,]*(?:\.\d+)?\s*(?:tco2e|公噸|噸|%)?", text, re.IGNORECASE)
+    return match.group(0) if match else ""
+
+
 def _scoped_chunks(chunks, disclosure_code):
     anchors = DISCLOSURE_ANCHORS[disclosure_code]
     scoped = []
@@ -203,19 +208,18 @@ def _dynamic_conclusion(total_score, missing_items, benchmark_comparison, recomm
 
 
 @transaction.atomic
-def run_rule_engine_analysis(report):
+def run_rule_engine_analysis(report, analysis_job=None):
     seed_gri_rule_tables()
-    result, _ = AnalysisResult.objects.update_or_create(
+    AnalysisResult.objects.filter(report=report, is_latest=True).update(is_latest=False)
+    version_number = (AnalysisResult.objects.filter(report=report).order_by("-version_number").values_list("version_number", flat=True).first() or 0) + 1
+    result = AnalysisResult.objects.create(
         report=report,
-        defaults={
-            "summary": "GRI 305 規則引擎、標竿比較與改善建議已完成。",
-            "model_name": "gri-rule-engine-v1",
-        },
+        analysis_job=analysis_job,
+        version_number=version_number,
+        is_latest=True,
+        summary="GRI 305 規則引擎、標竿比較與改善建議已完成。",
+        model_name="gri-rule-engine-v1",
     )
-    result.disclosure_scores.all().delete()
-    result.missing_items.all().delete()
-    result.evidence_citations.all().delete()
-    result.recommendations.all().delete()
 
     chunks = _report_chunks(report)
     total_score = Decimal("0")
@@ -245,6 +249,9 @@ def run_rule_engine_analysis(report):
                 "max_score": float(weight.max_score),
                 "score": float(field_score),
                 "status": "complete" if evidence else "missing",
+                "detected_value": _detected_value(evidence["quoted_text"]) if evidence else "",
+                "page_number": evidence["chunk"].page_start if evidence else None,
+                "evidence_excerpt": evidence["quoted_text"][:240] if evidence else "",
             }
             field_results.append(field_result)
             if evidence:
@@ -338,4 +345,6 @@ def run_rule_engine_analysis(report):
     result.save(update_fields=["total_score", "confidence_score", "summary", "raw_output", "updated_at"])
     result.raw_output["llm_management_feedback"] = build_management_feedback(result)
     result.save(update_fields=["raw_output", "updated_at"])
+    report.latest_analysis_result = result
+    report.save(update_fields=["latest_analysis_result", "updated_at"])
     return result

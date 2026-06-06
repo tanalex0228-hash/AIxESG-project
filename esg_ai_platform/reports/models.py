@@ -35,6 +35,20 @@ class Report(models.Model):
     industry_category = models.CharField(max_length=120, blank=True)
     notes = models.TextField(blank=True)
     status = models.CharField(max_length=40, choices=REPORT_STATUS_CHOICES, default="uploaded", db_index=True)
+    latest_analysis_job = models.ForeignKey(
+        "AnalysisJob",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    latest_analysis_result = models.ForeignKey(
+        "analysis.AnalysisResult",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
     total_pages = models.PositiveIntegerField(default=0)
     language = models.CharField(max_length=20, default="zh-Hant")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -45,6 +59,18 @@ class Report(models.Model):
 
     def __str__(self):
         return f"{self.company_name} {self.report_year}"
+
+    @property
+    def analysis_job(self):
+        if self.latest_analysis_job_id:
+            return self.latest_analysis_job
+        return self.analysis_jobs.order_by("-created_at").first()
+
+    @property
+    def analysis_result(self):
+        if self.latest_analysis_result_id:
+            return self.latest_analysis_result
+        return self.analysis_results.order_by("-version_number", "-analyzed_at").first()
 
 
 class ReportFile(models.Model):
@@ -137,7 +163,15 @@ class OCRJob(models.Model):
 
 
 class AnalysisJob(models.Model):
-    report = models.OneToOneField(Report, on_delete=models.CASCADE, related_name="analysis_job")
+    PURPOSE_UPLOAD = "upload"
+    PURPOSE_REANALYSIS = "reanalysis"
+    PURPOSE_CHOICES = [
+        (PURPOSE_UPLOAD, "Initial Upload"),
+        (PURPOSE_REANALYSIS, "Reanalysis"),
+    ]
+
+    report = models.ForeignKey(Report, on_delete=models.CASCADE, related_name="analysis_jobs")
+    purpose = models.CharField(max_length=40, choices=PURPOSE_CHOICES, default=PURPOSE_UPLOAD)
     status = models.CharField(max_length=40, choices=REPORT_STATUS_CHOICES, default="uploaded", db_index=True)
     celery_task_id = models.CharField(max_length=255, blank=True)
     error_message = models.TextField(blank=True)
@@ -147,12 +181,19 @@ class AnalysisJob(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["report", "-created_at"]),
+        ]
+
     def mark(self, status, progress=None, error_message=""):
         self.status = status
         self.report.status = status
+        self.report.latest_analysis_job = self
         if progress is not None:
             self.progress = progress
         if error_message:
             self.error_message = error_message
         self.save(update_fields=["status", "progress", "error_message", "updated_at"])
-        self.report.save(update_fields=["status", "updated_at"])
+        self.report.save(update_fields=["status", "latest_analysis_job", "updated_at"])

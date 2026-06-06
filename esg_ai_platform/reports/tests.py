@@ -8,7 +8,8 @@ from django.test import TestCase, override_settings
 from django.utils.datastructures import MultiValueDict
 
 from accounts.models import Role, SystemAdminUserProfile, UserOrganizationRole, UserProfile
-from analysis.models import AnalysisResult, GeneratedReport
+from analysis.models import AnalysisResult, DisclosureScore, GeneratedReport
+from gri.models import GRIRequiredField
 from organizations.models import Organization
 from reports.forms import ReportUploadForm
 from reports.models import AnalysisJob, Report, ReportChunk, ReportFile
@@ -134,6 +135,46 @@ class ReportUploadTests(TestCase):
         self.assertEqual(csv_response.status_code, 200)
         self.assertIn("text/csv", csv_response["Content-Type"])
 
+    def test_compare_page_shows_detected_field_value_for_hover_context(self):
+        GRIRequiredField.objects.create(
+            disclosure_code="305-1",
+            field_key="S1_Total_Emissions",
+            field_label="排放總量",
+            is_required=True,
+            is_active=True,
+        )
+        report = Report.objects.create(
+            organization=self.organization,
+            company_name="Tenant A",
+            report_year=2025,
+            title="Value Compare Report",
+            status="completed",
+        )
+        result = AnalysisResult.objects.create(report=report, total_score=70, confidence_score=80)
+        DisclosureScore.objects.create(
+            analysis_result=result,
+            disclosure_code="305-1",
+            status="complete",
+            agent_output={
+                "field_results": [
+                    {
+                        "field_label": "排放總量",
+                        "status": "complete",
+                        "detected_value": "1,234 tCO2e",
+                        "page_number": 7,
+                        "evidence_excerpt": "Scope 1 排放總量為 1,234 tCO2e。",
+                    }
+                ]
+            },
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(f"/reports/compare/?report_ids={report.id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "1,234 tCO2e")
+        self.assertContains(response, "頁碼 7")
+
     def test_download_original_and_generated_reports(self):
         report = Report.objects.create(
             organization=self.organization,
@@ -185,3 +226,40 @@ class ReportUploadTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "High Co")
         self.assertContains(response, "Low Co")
+
+    def test_reanalyze_creates_new_job_and_redirects_to_status(self):
+        report = Report.objects.create(
+            organization=self.organization,
+            company_name="Tenant A",
+            report_year=2025,
+            title="Needs Reanalysis",
+            status="completed",
+        )
+        AnalysisResult.objects.create(report=report, total_score=55, confidence_score=70)
+        self.client.force_login(self.user)
+
+        with patch("reports.views.reanalyze_report_task.delay", return_value=SimpleNamespace(id="task-reanalyze")):
+            response = self.client.post(f"/reports/{report.pk}/reanalyze/")
+
+        report.refresh_from_db()
+        job = report.latest_analysis_job
+        self.assertRedirects(response, f"/reports/{report.pk}/status/", fetch_redirect_response=False)
+        self.assertEqual(job.purpose, AnalysisJob.PURPOSE_REANALYSIS)
+        self.assertEqual(job.celery_task_id, "task-reanalyze")
+
+    def test_individual_user_cannot_reanalyze_public_report(self):
+        report = Report.objects.create(
+            organization=self.organization,
+            company_name="Tenant A",
+            report_year=2025,
+            title="Public Report",
+            status="completed",
+        )
+        individual = get_user_model().objects.create_user(username="public-reader", password="pass")
+        UserProfile.objects.create(user=individual, account_type=UserProfile.ACCOUNT_INDIVIDUAL, legal_name="Reader")
+        self.client.force_login(individual)
+
+        response = self.client.post(f"/reports/{report.pk}/reanalyze/")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(AnalysisJob.objects.filter(report=report, purpose=AnalysisJob.PURPOSE_REANALYSIS).exists())

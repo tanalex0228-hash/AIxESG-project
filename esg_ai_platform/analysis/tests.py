@@ -57,3 +57,22 @@ class AnalysisPipelineTests(TestCase):
 
         self.assertEqual(result.disclosure_scores.count(), 5)
         self.assertGreaterEqual(result.evidence_citations.count(), 1)
+
+    def test_analysis_runner_preserves_previous_versions(self):
+        ReportChunk.objects.create(
+            report=self.report,
+            page_start=42,
+            page_end=42,
+            chunk_text="本公司 Scope 1 範疇一直接溫室氣體排放量為 1,234 tCO2e。",
+            token_count=30,
+        )
+
+        first = run_gri_305_analysis(self.report)
+        second = run_gri_305_analysis(self.report)
+        self.report.refresh_from_db()
+
+        self.assertEqual(self.report.analysis_results.count(), 2)
+        self.assertEqual(first.version_number, 1)
+        self.assertEqual(second.version_number, 2)
+        self.assertFalse(self.report.analysis_results.get(pk=first.pk).is_latest)
+        self.assertEqual(self.report.analysis_result, second)

@@ -8,6 +8,12 @@
     <p class="page-subtitle">查看解析狀態、GRI 305 分項分數與產出的企業診斷報告。</p>
   </div>
   <div class="hero-actions">
+    {% if can_reanalyze %}
+      <form method="post" action="{% url 'reports:reanalyze' report.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-primary" type="submit">重新分析</button>
+      </form>
+    {% endif %}
     {% if generated_report and generated_report.file %}<a class="btn btn-success" href="{% url 'reports:download_generated' report.pk %}">下載 AIxESG 分析報告</a>{% endif %}
     {% if report.file_record and report.file_record.pdf_file %}<a class="btn btn-outline-primary" href="{% url 'reports:download_original' report.pk %}">下載原始公司 PDF</a>{% endif %}
   </div>
@@ -17,7 +23,7 @@
     <div class="col-md-3"><div class="metric warning"><span>狀態</span><strong>{{ report.status }}</strong></div></div>
     <div class="col-md-3"><div class="metric"><span>頁數</span><strong>{{ report.total_pages }}</strong></div></div>
     <div class="col-md-3"><div class="metric"><span>進度</span><strong>{{ report.analysis_job.progress|default:0 }}%</strong></div></div>
-    <div class="col-md-3"><div class="metric success"><span>總分</span><strong>{{ report.analysis_result.total_score|default:"-" }}</strong></div></div>
+    <div class="col-md-3"><div class="metric success"><span>最新總分</span><strong>{{ report.analysis_result.total_score|default:"-" }}</strong></div></div>
   </div>
 </section>
 {% if report.analysis_result %}
@@ -119,4 +125,31 @@
   </div>
 </section>
 {% endif %}
+
+<section class="panel mt-3">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">分析版本紀錄</h2>
+      <p class="panel-kicker">每次重新分析都會保留舊版本，最新版本會顯示在本頁主要結果。</p>
+    </div>
+  </div>
+  <div class="table-responsive table-shell">
+    <table class="table">
+      <thead><tr><th>版本</th><th>分數</th><th>狀態</th><th>用途</th><th>分析時間</th></tr></thead>
+      <tbody>
+        {% for result in analysis_history %}
+          <tr>
+            <td>v{{ result.version_number }}{% if result.is_latest %} <span class="status-pill complete">latest</span>{% endif %}</td>
+            <td><span class="score-pill">{{ result.total_score }}</span></td>
+            <td>{{ result.analysis_job.status|default:"completed" }}</td>
+            <td>{{ result.analysis_job.purpose|default:"analysis" }}</td>
+            <td>{{ result.analyzed_at }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">尚無分析版本。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
 {% endblock %}
