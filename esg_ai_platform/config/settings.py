@@ -10,6 +10,14 @@ env = environ.Env(
     CSRF_TRUSTED_ORIGINS=(list, []),
     MAX_UPLOAD_SIZE_MB=(int, 50),
     CELERY_TASK_ALWAYS_EAGER=(bool, False),
+    SESSION_COOKIE_SECURE=(bool, False),
+    CSRF_COOKIE_SECURE=(bool, False),
+    SECURE_SSL_REDIRECT=(bool, False),
+    SECURE_HSTS_SECONDS=(int, 0),
+    SECURE_HSTS_INCLUDE_SUBDOMAINS=(bool, False),
+    SECURE_HSTS_PRELOAD=(bool, False),
+    USE_X_FORWARDED_HOST=(bool, False),
+    SECURE_PROXY_SSL_HEADER=(str, ""),
 )
 environ.Env.read_env(BASE_DIR / ".env")
 
@@ -17,6 +25,18 @@ SECRET_KEY = env("SECRET_KEY", default="change-me-in-production")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
+SESSION_COOKIE_SECURE = env("SESSION_COOKIE_SECURE")
+CSRF_COOKIE_SECURE = env("CSRF_COOKIE_SECURE")
+SECURE_SSL_REDIRECT = env("SECURE_SSL_REDIRECT")
+SECURE_HSTS_SECONDS = env("SECURE_HSTS_SECONDS")
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env("SECURE_HSTS_INCLUDE_SUBDOMAINS")
+SECURE_HSTS_PRELOAD = env("SECURE_HSTS_PRELOAD")
+USE_X_FORWARDED_HOST = env("USE_X_FORWARDED_HOST")
+
+secure_proxy_ssl_header = env("SECURE_PROXY_SSL_HEADER")
+if secure_proxy_ssl_header:
+    header, value = secure_proxy_ssl_header.split(",", 1)
+    SECURE_PROXY_SSL_HEADER = (header.strip(), value.strip())
 
 INSTALLED_APPS = [
     "django.contrib.admin",

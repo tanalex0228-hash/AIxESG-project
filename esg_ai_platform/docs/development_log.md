@@ -148,3 +148,10 @@
 - Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, and `manage.py test --noinput` passed with 22 tests.
 - Fixes: Removed the misleading numeric distribution view because many ESG indicators are qualitative or narrative evidence rather than comparable quantities.
 - Notes: Rule-engine detected values may still exist internally in field evidence, but the comparison UI no longer presents them as standalone metrics.
+
+### Module: HTTPS Transport Hardening
+
+- Completed: Added environment-driven Django HTTPS security settings for secure cookies, HSTS, SSL redirects, forwarded host handling, and proxy SSL headers; updated production environment examples to include the HTTPS public origin.
+- Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, and `manage.py test --noinput` passed with 22 tests; remote HTTPS smoke verification pending deployment.
+- Fixes: Prepared the app to run behind HTTPS or direct TLS Gunicorn without hard-coding production-only behavior into local development.
+- Notes: The current `financial-lab` account cannot modify system Nginx without sudo, so the immediate HTTPS deployment uses direct TLS on the AIxESG public port.
