@@ -134,3 +134,10 @@
 - Tests: `makemigrations --check --dry-run`, `manage.py migrate`, `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, and `manage.py test --noinput` passed with 22 tests.
 - Fixes: Previous `AnalysisResult` records are no longer overwritten by the rule engine; reanalysis creates a new `AnalysisJob` and a new `AnalysisResult` version, and individual public viewers cannot reanalyze reports they only have read access to.
 - Notes: Reanalysis reuses existing parsed pages, chunks, and embeddings when present, and automatically fills missing parse/OCR/embedding steps before running the latest GRI 305 rule engine.
+
+### Module: Responsive Tables and Comparison Tooltip
+
+- Completed: Fixed mobile/tablet horizontal scrolling for data tables by replacing hidden table overflow with touch-friendly horizontal scroll; upgraded the report comparison matrix from native title hints to a dynamic cursor-following tooltip that includes extracted value, indicator meaning, peer disclosure list, relative value distribution, and evidence excerpt.
+- Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, and `manage.py test --noinput` passed with 22 tests.
+- Fixes: Ranking, comparison, dashboard, report detail, and admin data tables can now expose overflow content on narrow screens; comparison cells now provide richer context instead of only complete/missing labels.
+- Notes: Tooltip data is generated server-side from the latest rule-engine field evidence and rendered from escaped JSON for safer browser display.

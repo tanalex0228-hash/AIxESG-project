@@ -238,12 +238,30 @@ a:hover {
 }
 
 .table-shell {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.table-shell::-webkit-scrollbar {
+  height: 10px;
+}
+
+.table-shell::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, .38);
+  border-radius: 999px;
+}
+
+.table-shell::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, .55);
 }
 
 .table {
   --bs-table-bg: transparent;
   margin: 0;
+  min-width: max-content;
+  width: 100%;
 }
 
 .table th {
@@ -855,6 +873,10 @@ form ul.errorlist {
   min-width: 130px;
 }
 
+.comparison-table {
+  position: relative;
+}
+
 .comparison-table th:first-child,
 .comparison-table td:first-child {
   min-width: 80px;
@@ -867,6 +889,7 @@ form ul.errorlist {
 
 .matrix-pill {
   border-radius: 999px;
+  cursor: help;
   display: inline-flex;
   flex-direction: column;
   font-size: .78rem;
@@ -894,6 +917,130 @@ form ul.errorlist {
 .matrix-pill.missing {
   background: rgba(180, 35, 24, .1);
   color: var(--danger);
+}
+
+.comparison-tooltip {
+  background: rgba(11, 13, 18, .96);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 8px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, .28);
+  color: #fff;
+  left: 0;
+  max-width: min(380px, calc(100vw - 28px));
+  opacity: 0;
+  padding: 14px;
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  transform: translate3d(-9999px, -9999px, 0);
+  transition: opacity .12s ease;
+  width: 380px;
+  z-index: 2000;
+}
+
+.comparison-tooltip.visible {
+  opacity: 1;
+}
+
+.comparison-tooltip h3 {
+  font-size: .95rem;
+  font-weight: 780;
+  margin: 0 0 4px;
+}
+
+.comparison-tooltip p {
+  color: rgba(255, 255, 255, .78);
+  font-size: .78rem;
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+.tooltip-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 10px;
+}
+
+.tooltip-grid div {
+  background: rgba(255, 255, 255, .08);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.tooltip-grid span,
+.tooltip-section span {
+  color: rgba(255, 255, 255, .56);
+  display: block;
+  font-size: .68rem;
+  font-weight: 760;
+  letter-spacing: 0;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+
+.tooltip-grid strong {
+  display: block;
+  font-size: .85rem;
+  line-height: 1.25;
+}
+
+.tooltip-section {
+  margin-top: 10px;
+}
+
+.tooltip-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tooltip-tags em {
+  background: rgba(255, 255, 255, .1);
+  border-radius: 999px;
+  font-size: .72rem;
+  font-style: normal;
+  padding: 4px 7px;
+}
+
+.distribution-bars {
+  align-items: end;
+  display: flex;
+  gap: 7px;
+  min-height: 86px;
+  overflow-x: auto;
+  padding-top: 6px;
+}
+
+.distribution-bar {
+  align-items: center;
+  display: flex;
+  flex: 0 0 42px;
+  flex-direction: column;
+  gap: 5px;
+  justify-content: end;
+}
+
+.distribution-bar i {
+  background: rgba(255, 255, 255, .42);
+  border-radius: 999px 999px 4px 4px;
+  display: block;
+  min-height: 8px;
+  width: 18px;
+}
+
+.distribution-bar.current i {
+  background: #67e8f9;
+}
+
+.distribution-bar small {
+  color: rgba(255, 255, 255, .72);
+  font-size: .65rem;
+  max-width: 56px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 991px) {

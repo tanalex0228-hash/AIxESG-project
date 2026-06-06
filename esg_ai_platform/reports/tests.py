@@ -167,13 +167,40 @@ class ReportUploadTests(TestCase):
                 ]
             },
         )
+        peer = Report.objects.create(
+            organization=self.organization,
+            company_name="Peer B",
+            report_year=2025,
+            title="Peer Value Compare Report",
+            status="completed",
+        )
+        peer_result = AnalysisResult.objects.create(report=peer, total_score=88, confidence_score=80)
+        DisclosureScore.objects.create(
+            analysis_result=peer_result,
+            disclosure_code="305-1",
+            status="complete",
+            agent_output={
+                "field_results": [
+                    {
+                        "field_label": "排放總量",
+                        "status": "complete",
+                        "detected_value": "2,500 tCO2e",
+                        "page_number": 9,
+                        "evidence_excerpt": "Scope 1 排放總量為 2,500 tCO2e。",
+                    }
+                ]
+            },
+        )
         self.client.force_login(self.user)
 
-        response = self.client.get(f"/reports/compare/?report_ids={report.id}")
+        response = self.client.get(f"/reports/compare/?report_ids={report.id}&report_ids={peer.id}")
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "comparison-tooltip-data")
         self.assertContains(response, "1,234 tCO2e")
-        self.assertContains(response, "頁碼 7")
+        self.assertContains(response, "2,500 tCO2e")
+        self.assertContains(response, "Peer B 2025")
+        self.assertContains(response, "data-comparison-tooltip")
 
     def test_download_original_and_generated_reports(self):
         report = Report.objects.create(

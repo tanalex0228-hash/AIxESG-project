@@ -1,4 +1,6 @@
 import csv
+import re
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -38,6 +40,22 @@ def _reanalyzable_reports(user):
     return Report.objects.filter(organization=organization)
 
 
+def _numeric_value(value):
+    match = re.search(r"-?\d[\d,]*(?:\.\d+)?", value or "")
+    if not match:
+        return None
+    try:
+        return Decimal(match.group(0).replace(",", ""))
+    except InvalidOperation:
+        return None
+
+
+def _field_meaning(field):
+    if field.recommendation_template:
+        return field.recommendation_template
+    return f"{field.disclosure_code} 的「{field.field_label}」用於判斷報告書是否揭露必要的量化數據、方法、來源與管理責任。"
+
+
 def _comparison_rows(reports):
     required_fields = list(GRIRequiredField.objects.filter(is_active=True, is_required=True).order_by("disclosure_code", "sort_order"))
     field_results_by_report = {}
@@ -59,24 +77,70 @@ def _comparison_rows(reports):
                     field_map[(disclosure_score.disclosure_code, field_result.get("field_label", ""))] = field_result
         field_results_by_report[report.id] = field_map
     rows = []
+    tooltip_payloads = {}
     for field in required_fields:
         label = field.field_label
         key = (field.disclosure_code, label)
+        disclosures = []
+        values = []
+        for report in reports:
+            field_result = field_results_by_report.get(report.id, {}).get(key, {})
+            detected_value = field_result.get("detected_value", "")
+            numeric_value = _numeric_value(detected_value)
+            is_missing = key in report_missing.get(report.id, set())
+            if not is_missing:
+                disclosures.append(f"{report.company_name} {report.report_year}")
+            if numeric_value is not None:
+                values.append(
+                    {
+                        "company": report.company_name,
+                        "year": report.report_year,
+                        "value": float(numeric_value),
+                        "raw_value": detected_value,
+                    }
+                )
+        max_value = max((item["value"] for item in values), default=0)
+        cells = []
+        for report in reports:
+            status = "missing" if key in report_missing.get(report.id, set()) else "complete"
+            field_result = field_results_by_report.get(report.id, {}).get(key, {})
+            tooltip_key = f"{field.disclosure_code}-{field.field_key}-{report.id}"
+            tooltip_payloads[tooltip_key] = {
+                "company": report.company_name,
+                "year": report.report_year,
+                "status": status,
+                "disclosure_code": field.disclosure_code,
+                "field_label": label,
+                "value": field_result.get("detected_value", ""),
+                "page_number": field_result.get("page_number"),
+                "evidence_excerpt": field_result.get("evidence_excerpt", ""),
+                "meaning": _field_meaning(field),
+                "disclosed_companies": disclosures,
+                "distribution": [
+                    {
+                        **item,
+                        "percent": round((item["value"] / max_value) * 100, 1) if max_value else 0,
+                        "current": item["company"] == report.company_name and item["year"] == report.report_year,
+                    }
+                    for item in values
+                ],
+            }
+            cells.append(
+                {
+                    "report": report,
+                    "status": status,
+                    "field_result": field_result,
+                    "tooltip_key": tooltip_key,
+                }
+            )
         rows.append(
             {
                 "disclosure_code": field.disclosure_code,
                 "field_label": label,
-                "cells": [
-                    {
-                        "report": report,
-                        "status": "missing" if key in report_missing.get(report.id, set()) else "complete",
-                        "field_result": field_results_by_report.get(report.id, {}).get(key, {}),
-                    }
-                    for report in reports
-                ],
+                "cells": cells,
             }
         )
-    return rows
+    return rows, tooltip_payloads
 
 
 @login_required
@@ -256,7 +320,7 @@ def compare_reports(request):
     )
     selected_ids = [int(value) for value in request.GET.getlist("report_ids") if value.isdigit()]
     selected_reports = list(reports_qs.filter(id__in=selected_ids)) if selected_ids else list(reports_qs[:4])
-    rows = _comparison_rows(selected_reports)
+    rows, tooltip_payloads = _comparison_rows(selected_reports)
 
     if request.GET.get("export") == "csv":
         response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
@@ -276,6 +340,7 @@ def compare_reports(request):
             "selected_reports": selected_reports,
             "selected_ids": selected_ids,
             "comparison_rows": rows,
+            "comparison_tooltips": tooltip_payloads,
         },
     )
 
