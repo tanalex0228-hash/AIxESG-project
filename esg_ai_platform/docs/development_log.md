@@ -90,3 +90,12 @@
 - Completed: Added environment-driven `CSRF_TRUSTED_ORIGINS` support for public IP/port deployments.
 - Tests: Pending public login form POST verification.
 - Fixes: Public deployment reached Django but failed form submission with CSRF 403 because `http://140.136.134.141:8010` was not trusted.
+
+## 2026-06-06
+
+### Module: GRI 305 Knowledge Base Integration
+
+- Completed: Added formal GRI rule, scoring weight, and required-field models; added structured benchmark GRI 305 and gold-standard models; copied the provided Markdown knowledge base into `knowledge_base/`.
+- Tests: `makemigrations`, `migrate`, knowledge-base import, 桓達企業 smoke pipeline, `ruff check .`, `mypy .`, `manage.py check`, `manage.py test --noinput`, PostgreSQL connection, Redis ping, Django runserver, and Celery worker startup passed.
+- Fixes: Replaced GPT/agent-derived scoring entry point with a deterministic rule-engine wrapper while preserving the existing `run_gri_305_analysis(report)` interface; expanded Scope 3 category keyword matching for underscore-style benchmark fields.
+- Notes: The official 桓達 PDF is not present in the workspace, so the smoke script generates a named 桓達企業 test PDF for pipeline validation.

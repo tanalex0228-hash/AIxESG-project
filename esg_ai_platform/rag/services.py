@@ -33,6 +33,10 @@ def _embedding_for_text(text):
     return _deterministic_embedding(text, dimensions)
 
 
+def embedding_for_text(text):
+    return _embedding_for_text(text)
+
+
 def create_report_vector_records(report):
     document, _ = VectorDocument.objects.get_or_create(
         source_type="report",

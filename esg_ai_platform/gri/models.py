@@ -110,3 +110,69 @@ class RegulationChunk(models.Model):
     page_number = models.PositiveIntegerField(null=True, blank=True)
     embedding_status = models.CharField(max_length=40, default="pending")
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class GRIDisclosureRule(models.Model):
+    disclosure_code = models.CharField(max_length=40, db_index=True)
+    rule_name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    official_requirement = models.TextField(blank=True)
+    source_document = models.CharField(max_length=255, blank=True)
+    version = models.CharField(max_length=40, default="GRI 305:2016")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "gri_disclosure_rules"
+        unique_together = ("disclosure_code", "version")
+        ordering = ["disclosure_code"]
+
+    def __str__(self):
+        return f"{self.disclosure_code} {self.rule_name}"
+
+
+class GRIScoringWeight(models.Model):
+    disclosure_code = models.CharField(max_length=40, db_index=True)
+    field_key = models.CharField(max_length=120)
+    field_label = models.CharField(max_length=255)
+    max_score = models.DecimalField(max_digits=5, decimal_places=2)
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "gri_scoring_weights"
+        unique_together = ("disclosure_code", "field_key")
+        ordering = ["disclosure_code", "sort_order"]
+
+    def __str__(self):
+        return f"{self.disclosure_code} {self.field_label}: {self.max_score}"
+
+
+class GRIRequiredField(models.Model):
+    SEVERITY_CHOICES = [
+        ("high", "High"),
+        ("medium", "Medium"),
+        ("low", "Low"),
+    ]
+
+    disclosure_code = models.CharField(max_length=40, db_index=True)
+    field_key = models.CharField(max_length=120)
+    field_label = models.CharField(max_length=255)
+    keywords = models.JSONField(default=list, blank=True)
+    patterns = models.JSONField(default=list, blank=True)
+    recommendation_template = models.TextField(blank=True)
+    severity = models.CharField(max_length=40, choices=SEVERITY_CHOICES, default="medium")
+    is_required = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "gri_required_fields"
+        unique_together = ("disclosure_code", "field_key")
+        ordering = ["disclosure_code", "sort_order"]
+
+    def __str__(self):
+        return f"{self.disclosure_code} {self.field_label}"

@@ -18,6 +18,9 @@ class VectorDocument(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        db_table = "vector_documents"
+
     def __str__(self):
         return f"{self.source_type}: {self.title}"
 
@@ -31,6 +34,9 @@ class VectorChunk(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        db_table = "document_chunks"
+
 
 class Embedding(models.Model):
     vector_chunk = models.OneToOneField(VectorChunk, on_delete=models.CASCADE, related_name="embedding")
@@ -39,6 +45,9 @@ class Embedding(models.Model):
     vector = VectorField(dimensions=3072)
     token_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "embeddings"
 
 
 class RetrievalLog(models.Model):
