@@ -8,9 +8,10 @@ from django.test import TestCase, override_settings
 from django.utils.datastructures import MultiValueDict
 
 from accounts.models import Role, SystemAdminUserProfile, UserOrganizationRole, UserProfile
+from analysis.models import AnalysisResult, GeneratedReport
 from organizations.models import Organization
 from reports.forms import ReportUploadForm
-from reports.models import AnalysisJob, Report, ReportChunk
+from reports.models import AnalysisJob, Report, ReportChunk, ReportFile
 
 
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
@@ -132,3 +133,55 @@ class ReportUploadTests(TestCase):
         self.assertEqual(page_response.status_code, 200)
         self.assertEqual(csv_response.status_code, 200)
         self.assertIn("text/csv", csv_response["Content-Type"])
+
+    def test_download_original_and_generated_reports(self):
+        report = Report.objects.create(
+            organization=self.organization,
+            company_name="Tenant A",
+            report_year=2025,
+            title="Downloadable Report",
+            status="completed",
+        )
+        ReportFile.objects.create(
+            report=report,
+            pdf_file=SimpleUploadedFile("original.pdf", b"%PDF-1.4\n%%EOF", content_type="application/pdf"),
+            original_filename="original.pdf",
+            file_size=14,
+        )
+        result = AnalysisResult.objects.create(report=report, total_score=70, confidence_score=80)
+        GeneratedReport.objects.create(
+            analysis_result=result,
+            file=SimpleUploadedFile("analysis.pdf", b"%PDF-1.4\n%%EOF", content_type="application/pdf"),
+        )
+        self.client.force_login(self.user)
+
+        original = self.client.get(f"/reports/{report.pk}/download/original/")
+        generated = self.client.get(f"/reports/{report.pk}/download/generated/")
+
+        self.assertEqual(original.status_code, 200)
+        self.assertEqual(generated.status_code, 200)
+
+    def test_ranking_page_orders_by_score(self):
+        low = Report.objects.create(
+            organization=self.organization,
+            company_name="Low Co",
+            report_year=2024,
+            title="Low",
+            status="completed",
+        )
+        high = Report.objects.create(
+            organization=self.organization,
+            company_name="High Co",
+            report_year=2024,
+            title="High",
+            status="completed",
+        )
+        AnalysisResult.objects.create(report=low, total_score=55, confidence_score=80)
+        AnalysisResult.objects.create(report=high, total_score=88, confidence_score=80)
+        self.client.force_login(self.user)
+
+        response = self.client.get("/reports/ranking/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "High Co")
+        self.assertContains(response, "Low Co")

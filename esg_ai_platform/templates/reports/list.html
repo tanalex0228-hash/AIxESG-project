@@ -12,6 +12,31 @@
     <a class="btn btn-outline-primary" href="{% url 'reports:compare' %}">公司對比</a>
   </div>
 </div>
+<section class="panel mb-3">
+  <form class="filter-row" method="get">
+    <div>
+      <label for="company">公司</label>
+      <input id="company" name="company" value="{{ filters.company }}" placeholder="輸入公司名稱">
+    </div>
+    <div>
+      <label for="year">年度</label>
+      <input id="year" name="year" value="{{ filters.year }}" placeholder="例如 2024">
+    </div>
+    <div>
+      <label for="status">狀態</label>
+      <select id="status" name="status">
+        <option value="">全部</option>
+        <option value="uploaded" {% if filters.status == "uploaded" %}selected{% endif %}>uploaded</option>
+        <option value="completed" {% if filters.status == "completed" %}selected{% endif %}>completed</option>
+        <option value="failed" {% if filters.status == "failed" %}selected{% endif %}>failed</option>
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button class="btn btn-primary" type="submit">篩選</button>
+      <a class="btn btn-outline-primary" href="{% url 'reports:list' %}">清除</a>
+    </div>
+  </form>
+</section>
 <section class="panel">
   <div class="panel-header">
     <div>

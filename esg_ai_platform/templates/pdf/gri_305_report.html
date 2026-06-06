@@ -20,6 +20,17 @@
   <h2>總覽</h2>
   <p>總分：{{ analysis.total_score }}；信心分數：{{ analysis.confidence_score }}</p>
   <p>{{ analysis.summary }}</p>
+  {% with feedback=analysis.raw_output.llm_management_feedback conclusion=analysis.raw_output.dynamic_conclusion benchmark=analysis.raw_output.benchmark_comparison %}
+  <h2>管理層評價</h2>
+  <p>AIxESG Rating：{{ feedback.overall_rating|default:"-" }}；來源：{{ feedback.source|default:"rule_engine" }}</p>
+  <p>{{ feedback.executive_feedback|default:conclusion.executive_summary }}</p>
+  <h2>同業標竿差距</h2>
+  <p>{{ benchmark.summary|default:"尚無標竿比較資料。" }}</p>
+  <h2>改善優先序</h2>
+  <ul>{% for item in feedback.improvement_advice %}<li>{{ item }}</li>{% empty %}<li>請補齊缺漏欄位與佐證來源。</li>{% endfor %}</ul>
+  <h2>Next 90 Days</h2>
+  <ol>{% for item in feedback.next_90_days %}<li>{{ item }}</li>{% empty %}<li>建立欄位 owner 並完成缺漏補件。</li>{% endfor %}</ol>
+  {% endwith %}
   <h2>305-1～305-5 分項分數</h2>
   <table><thead><tr><th>GRI</th><th>狀態</th><th>原始分</th><th>加權分</th><th>摘要</th></tr></thead><tbody>{% for score in analysis.disclosure_scores.all %}<tr><td>{{ score.disclosure_code }}</td><td>{{ score.status }}</td><td>{{ score.raw_score }}</td><td>{{ score.weighted_score }}</td><td>{{ score.summary }}</td></tr>{% endfor %}</tbody></table>
   <h2>缺漏診斷</h2>

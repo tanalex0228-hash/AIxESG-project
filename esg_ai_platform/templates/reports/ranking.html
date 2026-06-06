@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}排名比較 | AIxESG{% endblock %}
+{% block content %}
+<div class="page-hero compact">
+  <div>
+    <div class="eyebrow">Ranking</div>
+    <h1 class="page-title small">ESG 企劃書排名比較</h1>
+    <p class="page-subtitle">依 AIxESG 總分排序，快速比較不同公司、不同年度的 ESG 報告表現。</p>
+  </div>
+  <div class="hero-actions">
+    <a class="btn btn-outline-primary" href="{% url 'reports:compare' %}">缺漏矩陣</a>
+  </div>
+</div>
+
+<section class="panel mb-3">
+  <form class="filter-row" method="get">
+    <div>
+      <label for="company">公司</label>
+      <input id="company" name="company" value="{{ filters.company }}" placeholder="輸入公司名稱">
+    </div>
+    <div>
+      <label for="year">年度</label>
+      <input id="year" name="year" value="{{ filters.year }}" placeholder="例如 2024">
+    </div>
+    <div class="filter-actions">
+      <button class="btn btn-primary" type="submit">篩選</button>
+      <a class="btn btn-outline-primary" href="{% url 'reports:ranking' %}">清除</a>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">排名表</h2>
+      <p class="panel-kicker">分數相同時依年度與公司名稱排序</p>
+    </div>
+  </div>
+  <div class="table-responsive table-shell">
+    <table class="table">
+      <thead><tr><th>排名</th><th>公司</th><th>年度</th><th>報告</th><th>總分</th><th>信心</th><th>狀態</th></tr></thead>
+      <tbody>
+        {% for report in reports %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ report.company_name }}</td>
+            <td>{{ report.report_year }}</td>
+            <td><a href="{% url 'reports:detail' report.pk %}">{{ report.title }}</a></td>
+            <td><span class="score-pill">{{ report.analysis_result.total_score }}</span></td>
+            <td>{{ report.analysis_result.confidence_score }}</td>
+            <td><span class="status-pill">{{ report.status }}</span></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">尚無可排名的分析結果。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

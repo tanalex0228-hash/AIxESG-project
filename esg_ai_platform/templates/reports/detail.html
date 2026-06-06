@@ -8,7 +8,8 @@
     <p class="page-subtitle">查看解析狀態、GRI 305 分項分數與產出的企業診斷報告。</p>
   </div>
   <div class="hero-actions">
-    {% if generated_report and generated_report.file %}<a class="btn btn-success" href="{{ generated_report.file.url }}">下載 PDF 報告</a>{% endif %}
+    {% if generated_report and generated_report.file %}<a class="btn btn-success" href="{% url 'reports:download_generated' report.pk %}">下載 AIxESG 分析報告</a>{% endif %}
+    {% if report.file_record and report.file_record.pdf_file %}<a class="btn btn-outline-primary" href="{% url 'reports:download_original' report.pk %}">下載原始公司 PDF</a>{% endif %}
   </div>
 </div>
 <section class="panel">

@@ -804,20 +804,34 @@ form ul.errorlist {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
-.compare-picker label {
+.filter-row {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+}
+
+.compare-picker label,
+.filter-row label {
   color: #202939;
   display: block;
   font-weight: 750;
   margin-bottom: 8px;
 }
 
-.compare-picker select {
+.compare-picker select,
+.filter-row input,
+.filter-row select {
   background: #fff;
   border: 1px solid rgba(15, 23, 42, .14);
   border-radius: 8px;
-  min-height: 170px;
+  min-height: 42px;
   padding: 10px;
   width: 100%;
+}
+
+.compare-picker select {
+  min-height: 170px;
 }
 
 .compare-actions {
@@ -826,6 +840,11 @@ form ul.errorlist {
   flex-wrap: wrap;
   gap: 10px;
   justify-content: flex-end;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .comparison-table th {
@@ -894,6 +913,10 @@ form ul.errorlist {
   }
 
   .compare-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-row {
     grid-template-columns: 1fr;
   }
 

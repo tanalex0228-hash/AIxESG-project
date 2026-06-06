@@ -120,3 +120,10 @@
 - Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, `manage.py test --noinput`, 桓達企業 smoke pipeline, and route smoke tests for reports list/detail/status/status JSON/compare/CSV passed.
 - Fixes: Report history no longer appears empty for system admins; report detail no longer 404s when a system admin opens analyzed reports from dashboard history; upload flow redirects to a progress page instead of leaving the browser on a long-running request.
 - Notes: Comparison rows are generated from active GRI required fields and each selected report's stored missing-item records.
+
+### Module: Scoring Quality, Downloads, Filters, and Ranking
+
+- Completed: Scoped GRI field detection to disclosure-specific text windows, added richer field-specific recommendations, added protected downloads for original company PDFs and generated AIxESG reports, added company/year/status filters, added ESG report ranking page, and expanded the generated PDF report with management feedback and benchmark gaps.
+- Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, `manage.py test --noinput`, score-variance shell check, 桓達企業 smoke pipeline, and route smoke tests for ranking/original PDF/generated PDF downloads passed.
+- Fixes: Different reports no longer collapse into identical scores under the rule engine; generic “請補充...” recommendations were replaced with concrete disclosure value and action guidance per field.
+- Notes: Uploaded company PDFs are already stored through `ReportFile.pdf_file`; downloads now go through permission-checked Django views rather than direct media URLs.

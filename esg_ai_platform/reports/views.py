@@ -2,7 +2,7 @@ import csv
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -61,7 +61,23 @@ def _comparison_rows(reports):
 @login_required
 def report_list(request):
     reports = _accessible_reports(request.user).select_related("analysis_job", "analysis_result", "organization")
-    return render(request, "reports/list.html", {"reports": reports})
+    company = request.GET.get("company", "").strip()
+    year = request.GET.get("year", "").strip()
+    status = request.GET.get("status", "").strip()
+    if company:
+        reports = reports.filter(company_name__icontains=company)
+    if year.isdigit():
+        reports = reports.filter(report_year=int(year))
+    if status:
+        reports = reports.filter(status=status)
+    return render(
+        request,
+        "reports/list.html",
+        {
+            "reports": reports,
+            "filters": {"company": company, "year": year, "status": status},
+        },
+    )
 
 
 @login_required
@@ -132,6 +148,25 @@ def report_detail(request, pk):
 
 
 @login_required
+def download_original_report(request, pk):
+    report = get_object_or_404(_accessible_reports(request.user).select_related("file_record"), pk=pk)
+    file_record = getattr(report, "file_record", None)
+    if not file_record or not file_record.pdf_file:
+        raise Http404("Original PDF not found.")
+    return FileResponse(file_record.pdf_file.open("rb"), as_attachment=True, filename=file_record.original_filename)
+
+
+@login_required
+def download_generated_report(request, pk):
+    report = get_object_or_404(_accessible_reports(request.user).select_related("analysis_result"), pk=pk)
+    generated = GeneratedReport.objects.filter(analysis_result=getattr(report, "analysis_result", None)).last()
+    if not generated or not generated.file:
+        raise Http404("Generated report not found.")
+    filename = generated.file.name.rsplit("/", 1)[-1]
+    return FileResponse(generated.file.open("rb"), as_attachment=True, filename=filename)
+
+
+@login_required
 def report_status(request, pk):
     report = get_object_or_404(
         _accessible_reports(request.user).select_related("analysis_job", "analysis_result", "organization"),
@@ -195,3 +230,20 @@ def compare_reports(request):
             "comparison_rows": rows,
         },
     )
+
+
+@login_required
+def ranking_reports(request):
+    reports = (
+        _accessible_reports(request.user)
+        .filter(analysis_result__isnull=False)
+        .select_related("analysis_result", "organization")
+        .order_by("-analysis_result__total_score", "-report_year", "company_name")
+    )
+    company = request.GET.get("company", "").strip()
+    year = request.GET.get("year", "").strip()
+    if company:
+        reports = reports.filter(company_name__icontains=company)
+    if year.isdigit():
+        reports = reports.filter(report_year=int(year))
+    return render(request, "reports/ranking.html", {"reports": reports[:100], "filters": {"company": company, "year": year}})

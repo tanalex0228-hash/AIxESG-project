@@ -18,6 +18,35 @@ from .knowledge_base_importer import seed_gri_rule_tables
 from .llm_feedback import build_management_feedback
 
 SCORE_CODES = ["305-1", "305-2", "305-3", "305-4", "305-5"]
+DISCLOSURE_ANCHORS = {
+    "305-1": ["305-1", "scope 1", "範疇一", "直接溫室氣體", "直接排放"],
+    "305-2": ["305-2", "scope 2", "範疇二", "能源間接", "外購電力"],
+    "305-3": ["305-3", "scope 3", "範疇三", "其他間接", "價值鏈"],
+    "305-4": ["305-4", "密集度", "intensity"],
+    "305-5": ["305-5", "減量", "reduction", "減少"],
+}
+FIELD_KEYWORD_OVERRIDES = {
+    "Location_Based": ["location-based", "location based", "地點基礎", "地域基礎", "所在地基礎"],
+    "Market_Based": ["market-based", "market based", "市場基礎", "綠電", "再生能源憑證"],
+    "S1_Biogenic_Emissions": ["生質 co2", "生質二氧化碳", "生質燃料", "biogenic"],
+    "Carbon_Offsets": ["碳抵換", "碳權", "抵換", "offset", "carbon credit", "未使用碳權", "未使用抵換"],
+    "GWP": ["gwp", "全球暖化潛勢", "ipcc", "ar5", "ar6"],
+    "S1_GWP_Source": ["gwp", "全球暖化潛勢", "ipcc", "ar5", "ar6"],
+}
+FIELD_RECOMMENDATIONS = {
+    "Location_Based": "請補充 Scope 2 地點基礎排放量，列出用電量、電網排放係數、年度與係數來源。這能讓投資人看出公司所在地電力結構造成的真實碳風險，也能和同業用一致基準比較。",
+    "Market_Based": "請補充 Scope 2 市場基礎排放量，說明綠電、再生能源憑證或供電合約如何影響排放量。這能呈現企業採購低碳電力的實際管理成效，避免只揭露 location-based 而低估能源轉型策略。",
+    "S1_Biogenic_Emissions": "請補充生質 CO2 排放量，即使數值為 0 也應明確揭露。這能避免外部審查時誤判報告漏列生質燃料或生質來源排放，提升盤查完整性。",
+    "GWP": "請補充 GWP 來源，例如 IPCC AR5 或 AR6，並說明各溫室氣體換算為 CO2e 的版本。這能提高不同年度與同業比較的一致性，降低查證時被要求補件的風險。",
+    "S1_GWP_Source": "請補充 Scope 1 使用的 GWP 來源，例如 IPCC AR5 或 AR6。這能讓 CO2e 換算依據可追溯，避免不同氣體加總缺乏共同基準。",
+    "Carbon_Offsets": "請說明是否使用碳權、抵換、憑證或其他 offset；若未使用，也應明確寫出未納入抵換。這能讓減量成果與抵換行為分開呈現，避免管理績效被質疑。",
+    "S1_Base_Year_Emissions": "請補充基準年排放量與選定理由，並說明組織邊界或方法變更時是否重算。這能讓減量趨勢可驗證，而不是只有單年度排放數字。",
+    "Base_Year": "請補充該範疇的基準年、選定理由與是否重算。這能讓後續減量成果有比較基準，避免改善幅度缺乏可信參照。",
+    "Categories_Breakdown": "請把 Scope 3 依 15 類別拆分，至少標示適用、不適用、未盤查或數值為 0。這能讓供應鏈與產品使用階段的重大排放熱點被看見，也能明確規劃下一年度盤查優先序。",
+    "Emission_Factor": "請補充排放係數名稱、版本、來源與適用活動資料。這能讓數值可被第三方重算與追蹤，降低模型或人工估算被質疑的風險。",
+    "Methodology": "請補充計算方法、假設、工具與採用標準，例如 ISO 14064-1 或 GHG Protocol。這能提升報告可稽核性，也方便跨年度維持一致算法。",
+    "Reduction_Method": "請補充每項減量措施如何造成減排，例如設備汰換、製程改善、綠電採購或能效提升。這能把減量成果從口號變成可追蹤的管理行動。",
+}
 
 
 def _report_chunks(report):
@@ -33,17 +62,36 @@ def _numeric_signal(text):
     return bool(re.search(r"\d[\d,]*(?:\.\d+)?\s*(?:tco2e|公噸|噸|%)?", text, re.IGNORECASE))
 
 
-def _find_field_evidence(chunks, required_field):
-    keywords = required_field.keywords or [required_field.field_label]
+def _scoped_chunks(chunks, disclosure_code):
+    anchors = DISCLOSURE_ANCHORS[disclosure_code]
+    scoped = []
     for chunk in chunks:
-        if _match_keywords(chunk.chunk_text, keywords):
+        text = chunk.chunk_text
+        lowered = text.lower()
+        indexes = [lowered.find(anchor.lower()) for anchor in anchors if anchor.lower() in lowered]
+        if not indexes:
+            continue
+        start = max(0, min(indexes) - 450)
+        end = min(len(text), min(indexes) + 1800)
+        scoped.append((chunk, text[start:end]))
+    return scoped or [(chunk, chunk.chunk_text) for chunk in chunks]
+
+
+def _field_keywords(required_field):
+    return FIELD_KEYWORD_OVERRIDES.get(required_field.field_key, required_field.keywords or [required_field.field_label])
+
+
+def _find_field_evidence(scoped_chunks, required_field):
+    keywords = _field_keywords(required_field)
+    for chunk, scoped_text in scoped_chunks:
+        if _match_keywords(scoped_text, keywords):
             if required_field.field_key in {"S1_Total_Emissions", "Location_Based", "Market_Based", "Total_Emissions"}:
-                if not _numeric_signal(chunk.chunk_text):
+                if not _numeric_signal(scoped_text):
                     continue
             return {
                 "chunk": chunk,
-                "quoted_text": chunk.chunk_text[:800],
-                "confidence": Decimal("0.88") if _numeric_signal(chunk.chunk_text) else Decimal("0.72"),
+                "quoted_text": scoped_text[:800],
+                "confidence": Decimal("0.88") if _numeric_signal(scoped_text) else Decimal("0.72"),
             }
     return None
 
@@ -92,6 +140,8 @@ def _gold_standard_for(disclosure_code):
 
 
 def _recommendation_for_missing(missing_item, disclosure_code):
+    if missing_item.field_key in FIELD_RECOMMENDATIONS:
+        return FIELD_RECOMMENDATIONS[missing_item.field_key]
     standards = _gold_standard_for(disclosure_code)
     if standards:
         standard = standards[0]
@@ -173,6 +223,7 @@ def run_rule_engine_analysis(report):
     score_payload = []
 
     for disclosure_code in SCORE_CODES:
+        scoped_chunks = _scoped_chunks(chunks, disclosure_code)
         weights = list(GRIScoringWeight.objects.filter(disclosure_code=disclosure_code, is_active=True))
         required_fields = {
             field.field_key: field
@@ -185,7 +236,7 @@ def run_rule_engine_analysis(report):
 
         for weight in weights:
             required_field = required_fields.get(weight.field_key)
-            evidence = _find_field_evidence(chunks, required_field) if required_field else None
+            evidence = _find_field_evidence(scoped_chunks, required_field) if required_field else None
             field_score = weight.max_score if evidence else Decimal("0")
             earned += field_score
             field_result = {
