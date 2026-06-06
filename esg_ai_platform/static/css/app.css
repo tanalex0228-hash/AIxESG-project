@@ -424,6 +424,322 @@ form ul.errorlist {
   text-align: center;
 }
 
+.product-hero {
+  align-items: stretch;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(340px, .8fr);
+  padding: 48px 0 28px;
+}
+
+.product-hero-copy {
+  align-content: center;
+  display: grid;
+  min-height: 520px;
+}
+
+.product-hero-copy h1 {
+  font-size: clamp(2.65rem, 6vw, 5.8rem);
+  font-weight: 780;
+  line-height: .96;
+  margin: 0;
+  max-width: 840px;
+}
+
+.product-hero-copy p {
+  color: var(--muted);
+  font-size: 1.18rem;
+  line-height: 1.65;
+  margin: 22px 0 28px;
+  max-width: 680px;
+}
+
+.product-surface {
+  align-self: center;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.64)),
+    repeating-linear-gradient(90deg, rgba(15,23,42,.045) 0 1px, transparent 1px 46px);
+  border: 1px solid rgba(15, 23, 42, .12);
+  border-radius: 8px;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, .16);
+  min-height: 430px;
+  overflow: hidden;
+  padding: 18px;
+}
+
+.surface-top {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 24px;
+}
+
+.surface-top span {
+  background: #cbd5e1;
+  border-radius: 999px;
+  height: 10px;
+  width: 10px;
+}
+
+.surface-score {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding: 10px;
+}
+
+.surface-score small,
+.brief-rating span,
+.brief-rating small {
+  color: var(--muted);
+  display: block;
+  font-size: .78rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.surface-score strong {
+  font-size: 5.5rem;
+  font-weight: 780;
+  line-height: .9;
+}
+
+.surface-ring {
+  align-items: center;
+  background: #0b0d12;
+  border-radius: 999px;
+  color: #fff;
+  display: flex;
+  font-size: 3rem;
+  font-weight: 780;
+  height: 128px;
+  justify-content: center;
+  width: 128px;
+}
+
+.surface-list {
+  display: grid;
+  gap: 10px;
+}
+
+.surface-list div,
+.role-grid div {
+  background: rgba(255, 255, 255, .72);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.surface-list span {
+  color: var(--blue);
+  display: block;
+  font-size: .78rem;
+  font-weight: 750;
+  margin-bottom: 5px;
+}
+
+.surface-list strong {
+  font-size: .95rem;
+}
+
+.value-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 18px 0;
+}
+
+.value-grid article,
+.workflow-band,
+.role-band,
+.analysis-brief {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.value-grid article {
+  min-height: 230px;
+  padding: 22px;
+}
+
+.value-grid span {
+  color: var(--blue);
+  display: block;
+  font-size: .82rem;
+  font-weight: 780;
+  margin-bottom: 28px;
+}
+
+.value-grid h2,
+.workflow-band h2 {
+  font-size: 1.35rem;
+  font-weight: 760;
+  margin-bottom: 10px;
+}
+
+.value-grid p,
+.role-grid span {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.workflow-band {
+  align-items: center;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: .8fr 1.2fr;
+  margin: 18px 0;
+  padding: 28px;
+}
+
+.workflow-steps {
+  counter-reset: step;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.workflow-steps li {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-weight: 720;
+  padding: 14px;
+}
+
+.role-band {
+  margin-bottom: 30px;
+  padding: 24px;
+}
+
+.role-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.role-grid strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.admin-upload-context {
+  background: rgba(10, 132, 255, .07);
+  border: 1px solid rgba(10, 132, 255, .18);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
+.admin-upload-context label {
+  font-size: .9rem;
+  font-weight: 720;
+}
+
+.admin-upload-context select,
+.admin-upload-context input {
+  border: 1px solid rgba(15, 23, 42, .14);
+  border-radius: 8px;
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+.upload-block {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.upload-block strong {
+  display: block;
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+}
+
+.upload-block p {
+  color: var(--muted);
+}
+
+.analysis-brief {
+  align-items: stretch;
+  display: grid;
+  gap: 0;
+  grid-template-columns: 220px 1fr;
+  overflow: hidden;
+}
+
+.brief-rating {
+  align-content: center;
+  background: #0b0d12;
+  color: #fff;
+  display: grid;
+  justify-items: center;
+  padding: 28px;
+  text-align: center;
+}
+
+.brief-rating strong {
+  font-size: 5rem;
+  font-weight: 790;
+  line-height: 1;
+}
+
+.brief-rating small,
+.brief-rating span {
+  color: rgba(255,255,255,.68);
+}
+
+.brief-copy {
+  padding: 30px;
+}
+
+.brief-copy h2 {
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  font-weight: 760;
+  line-height: 1.15;
+  margin: 0 0 12px;
+}
+
+.brief-copy p,
+.panel p {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-cloud span {
+  background: #eef2f7;
+  border: 1px solid rgba(15,23,42,.08);
+  border-radius: 999px;
+  color: #344054;
+  font-size: .84rem;
+  font-weight: 650;
+  padding: 7px 11px;
+}
+
+.insight-list,
+.timeline-list {
+  color: #344054;
+  display: grid;
+  gap: 10px;
+  line-height: 1.6;
+  margin: 0;
+  padding-left: 18px;
+}
+
 @media (max-width: 991px) {
   .app-nav {
     background: rgba(250, 251, 253, .94);
@@ -440,6 +756,21 @@ form ul.errorlist {
 
   .auth-copy {
     min-height: 260px;
+  }
+
+  .product-hero,
+  .workflow-band,
+  .analysis-brief {
+    grid-template-columns: 1fr;
+  }
+
+  .product-hero-copy {
+    min-height: auto;
+  }
+
+  .value-grid,
+  .role-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -465,5 +796,16 @@ form ul.errorlist {
   .table th,
   .table td {
     padding: 11px 12px;
+  }
+
+  .value-grid,
+  .workflow-steps,
+  .role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .surface-score strong,
+  .brief-rating strong {
+    font-size: 3.8rem;
   }
 }

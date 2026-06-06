@@ -5,7 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.utils.datastructures import MultiValueDict
 
-from accounts.models import Role, UserOrganizationRole
+from accounts.models import Role, SystemAdminUserProfile, UserOrganizationRole, UserProfile
 from organizations.models import Organization
 from reports.forms import ReportUploadForm
 from reports.models import AnalysisJob, Report
@@ -53,3 +53,16 @@ class ReportUploadTests(TestCase):
         )
 
         self.assertFalse(form.is_valid())
+
+    def test_system_admin_can_open_upload_page_without_default_organization(self):
+        admin = get_user_model().objects.create_user(username="sys-upload", password="pass")
+        admin.is_staff = True
+        admin.save(update_fields=["is_staff"])
+        UserProfile.objects.create(user=admin, account_type=UserProfile.ACCOUNT_SYSTEM_ADMIN, legal_name="Admin")
+        SystemAdminUserProfile.objects.create(user=admin)
+        self.client.force_login(admin)
+
+        response = self.client.get("/reports/upload/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "系統管理者測試企業")

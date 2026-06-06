@@ -20,6 +20,77 @@
   </div>
 </section>
 {% if report.analysis_result %}
+{% with conclusion=report.analysis_result.raw_output.dynamic_conclusion feedback=report.analysis_result.raw_output.llm_management_feedback benchmark=report.analysis_result.raw_output.benchmark_comparison %}
+<section class="analysis-brief mt-3">
+  <div class="brief-rating">
+    <span>AIxESG Rating</span>
+    <strong>{{ feedback.overall_rating|default:"-" }}</strong>
+    <small>{{ feedback.source|default:"rule_engine" }}</small>
+  </div>
+  <div class="brief-copy">
+    <div class="eyebrow">Management Feedback</div>
+    <h2>{{ conclusion.executive_summary|default:report.analysis_result.summary }}</h2>
+    <p>{{ feedback.executive_feedback|default:conclusion.strategic_observation }}</p>
+  </div>
+</section>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-6">
+    <section class="panel h-100">
+      <div class="panel-header"><div><h2 class="panel-title">同業標竿差距</h2><p class="panel-kicker">與 benchmark database 比較</p></div></div>
+      <p class="mb-3">{{ benchmark.summary|default:"尚無標竿比較資料。" }}</p>
+      <div class="tag-cloud">
+        {% for category in benchmark.missing_categories %}
+          <span>{{ category }}</span>
+        {% empty %}
+          <span>未偵測到主要 Scope 3 類別缺口</span>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+  <div class="col-lg-6">
+    <section class="panel h-100">
+      <div class="panel-header"><div><h2 class="panel-title">未來風險</h2><p class="panel-kicker">依缺漏與評分結果產生</p></div></div>
+      <p>{{ conclusion.future_risk|default:"尚無風險摘要。" }}</p>
+      <ul class="insight-list">
+        {% for risk in feedback.key_risks %}
+          <li>{{ risk }}</li>
+        {% empty %}
+          <li>目前未偵測到高嚴重度缺漏。</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-6">
+    <section class="panel h-100">
+      <div class="panel-header"><div><h2 class="panel-title">改善建議</h2><p class="panel-kicker">LLM 綜合規則引擎與標竿差距後輸出</p></div></div>
+      <ul class="insight-list">
+        {% for advice in feedback.improvement_advice %}
+          <li>{{ advice }}</li>
+        {% empty %}
+          <li>請先完成報告分析以產出建議。</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+  <div class="col-lg-6">
+    <section class="panel h-100">
+      <div class="panel-header"><div><h2 class="panel-title">Next 90 Days</h2><p class="panel-kicker">短期可執行計畫</p></div></div>
+      <ol class="timeline-list">
+        {% for step in feedback.next_90_days %}
+          <li>{{ step }}</li>
+        {% empty %}
+          <li>補齊資料 owner、缺漏欄位與佐證來源。</li>
+        {% endfor %}
+      </ol>
+    </section>
+  </div>
+</div>
+{% endwith %}
+
 <section class="panel mt-3">
   <div class="panel-header">
     <div>
@@ -29,6 +100,21 @@
   </div>
   <div class="table-responsive table-shell">
     <table class="table"><thead><tr><th>項目</th><th>狀態</th><th>原始分</th><th>加權分</th><th>信心</th></tr></thead><tbody>{% for score in report.analysis_result.disclosure_scores.all %}<tr><td>{{ score.disclosure_code }}</td><td><span class="status-pill">{{ score.status }}</span></td><td>{{ score.raw_score }}</td><td><span class="score-pill">{{ score.weighted_score }}</span></td><td>{{ score.confidence }}</td></tr>{% endfor %}</tbody></table>
+  </div>
+</section>
+
+<section class="panel mt-3">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">缺漏與補強項目</h2>
+      <p class="panel-kicker">扣分項目會保留建議內容</p>
+    </div>
+  </div>
+  <div class="table-responsive table-shell">
+    <table class="table">
+      <thead><tr><th>GRI</th><th>項目</th><th>嚴重度</th><th>建議</th></tr></thead>
+      <tbody>{% for item in report.analysis_result.missing_items.all %}<tr><td>{{ item.disclosure_code }}</td><td>{{ item.item_name }}</td><td><span class="status-pill">{{ item.severity }}</span></td><td>{{ item.description }}</td></tr>{% empty %}<tr><td colspan="4">沒有缺漏項目。</td></tr>{% endfor %}</tbody>
+    </table>
   </div>
 </section>
 {% endif %}

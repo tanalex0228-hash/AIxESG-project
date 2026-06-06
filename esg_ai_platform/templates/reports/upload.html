@@ -12,13 +12,37 @@
   <div class="panel-header">
     <div>
       <h2 class="panel-title">建立分析任務</h2>
-      <p class="panel-kicker">支援企業永續報告書與 GRI 305 碳揭露章節</p>
+      <p class="panel-kicker">{% if organization %}目前上傳企業：{{ organization.name }}{% else %}支援企業永續報告書與 GRI 305 碳揭露章節{% endif %}</p>
     </div>
   </div>
+  {% if upload_blocked and not is_system_admin %}
+    <div class="upload-block">
+      <strong>{% if is_individual %}個人帳號僅能查看公開公司表現。{% else %}尚未設定企業組織。{% endif %}</strong>
+      <p>PDF 上傳與企業評分需要企業使用者身份，或由系統管理者指定測試企業後上傳。</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="{% url 'dashboard:index' %}">回到總覽</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:register' %}">建立企業帳號</a>
+      </div>
+    </div>
+  {% else %}
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
+    {% if is_system_admin %}
+      <div class="admin-upload-context">
+        <label for="organization_id">系統管理者測試企業</label>
+        <select id="organization_id" name="organization_id">
+          <option value="">選擇既有企業</option>
+          {% for org in organizations %}
+            <option value="{{ org.id }}">{{ org.name }}</option>
+          {% endfor %}
+        </select>
+        <label for="new_organization_name">或建立測試企業</label>
+        <input id="new_organization_name" name="new_organization_name" type="text" placeholder="例如：桓達企業測試">
+      </div>
+    {% endif %}
     {{ form.as_p }}
     <button class="btn btn-primary" type="submit">建立分析任務</button>
   </form>
+  {% endif %}
 </section>
 {% endblock %}

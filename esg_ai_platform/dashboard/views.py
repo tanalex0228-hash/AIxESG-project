@@ -5,6 +5,10 @@ from accounts.utils import get_user_organization, is_individual_user, is_system_
 from reports.models import Report
 
 
+def intro(request):
+    return render(request, "dashboard/intro.html")
+
+
 @login_required
 def index(request):
     organization = get_user_organization(request.user)

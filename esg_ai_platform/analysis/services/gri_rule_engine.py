@@ -15,6 +15,7 @@ from gri.models import GRIRequiredField, GRIScoringWeight
 
 from .gri_knowledge import CATEGORY_KEYWORDS, SCOPE3_CATEGORIES
 from .knowledge_base_importer import seed_gri_rule_tables
+from .llm_feedback import build_management_feedback
 
 SCORE_CODES = ["305-1", "305-2", "305-3", "305-4", "305-5"]
 
@@ -284,4 +285,6 @@ def run_rule_engine_analysis(report):
         "dynamic_conclusion": conclusion,
     }
     result.save(update_fields=["total_score", "confidence_score", "summary", "raw_output", "updated_at"])
+    result.raw_output["llm_management_feedback"] = build_management_feedback(result)
+    result.save(update_fields=["raw_output", "updated_at"])
     return result

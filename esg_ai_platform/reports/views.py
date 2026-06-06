@@ -2,8 +2,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from accounts.utils import get_user_organization
+from accounts.utils import get_user_organization, is_individual_user, is_system_admin_user
 from analysis.models import GeneratedReport
+from organizations.models import Organization
 
 from .forms import ReportUploadForm
 from .models import AnalysisJob, Report
@@ -20,9 +21,33 @@ def report_list(request):
 @login_required
 def upload_report(request):
     organization = get_user_organization(request.user)
+    is_system_admin = is_system_admin_user(request.user)
+    is_individual = is_individual_user(request.user)
+    organizations = Organization.objects.filter(is_active=True).order_by("name") if is_system_admin else Organization.objects.none()
+
+    if request.method == "POST" and is_system_admin:
+        selected_organization = request.POST.get("organization_id", "")
+        new_organization_name = request.POST.get("new_organization_name", "").strip()
+        if selected_organization:
+            organization = get_object_or_404(Organization, pk=selected_organization, is_active=True)
+        elif new_organization_name:
+            organization, _ = Organization.objects.get_or_create(name=new_organization_name)
+        else:
+            messages.error(request, "系統管理者測試上傳時，請選擇企業或建立測試企業。")
+
     if not organization:
-        messages.error(request, "尚未設定企業組織，請聯絡管理者。")
-        return redirect("dashboard:index")
+        form = ReportUploadForm(request.POST or None, request.FILES or None)
+        return render(
+            request,
+            "reports/upload.html",
+            {
+                "form": form,
+                "upload_blocked": True,
+                "is_system_admin": is_system_admin,
+                "is_individual": is_individual,
+                "organizations": organizations,
+            },
+        )
 
     if request.method == "POST":
         form = ReportUploadForm(request.POST, request.FILES)
@@ -36,7 +61,17 @@ def upload_report(request):
             return redirect("reports:detail", pk=report.pk)
     else:
         form = ReportUploadForm()
-    return render(request, "reports/upload.html", {"form": form})
+    return render(
+        request,
+        "reports/upload.html",
+        {
+            "form": form,
+            "organization": organization,
+            "is_system_admin": is_system_admin,
+            "is_individual": is_individual,
+            "organizations": organizations,
+        },
+    )
 
 
 @login_required

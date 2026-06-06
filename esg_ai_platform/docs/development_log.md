@@ -106,3 +106,10 @@
 - Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, `manage.py test --noinput`, and Django route smoke tests for login, registration, static CSS, dashboard, report list, upload redirect, and admin panel passed.
 - Fixes: Applied visual styling through shared CSS and per-page structure so the refresh is not limited to a single page.
 - Notes: The design direction adapts the provided Apple reference into an operational ESG SaaS interface instead of copying consumer-product page markup.
+
+### Module: Product Intro, Upload UX, and LLM Feedback
+
+- Completed: Added a public AIxESG product intro page, changed the brand link to that page, improved system-admin PDF upload testing flow, added upload-block messaging for non-enterprise users, and surfaced management feedback, benchmark gaps, risks, and 90-day recommendations on report detail pages.
+- Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, `manage.py test --noinput`, 桓達企業 smoke pipeline, LLM feedback normalization check, and route smoke tests for `/intro/`, `/login/`, `/reports/upload/`, and `/` passed.
+- Fixes: System administrators without a default organization can now choose or create a test company on the upload page instead of being silently redirected; LLM feedback rating is normalized to A/B/C/D for stable UI display.
+- Notes: LLM management feedback uses OpenAI when `OPENAI_API_KEY` exists and deterministic rule-engine fallback otherwise.
