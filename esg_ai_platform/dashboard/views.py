@@ -25,6 +25,12 @@ def index(request):
     latest_report = reports.first() if reports else None
     if latest_report:
         latest_result = getattr(latest_report, "analysis_result", None)
+    recent_missing_items = []
+    for report in reports[:8]:
+        result = getattr(report, "analysis_result", None)
+        if result:
+            for item in result.missing_items.all()[:6]:
+                recent_missing_items.append({"report": report, "item": item})
     return render(
         request,
         "dashboard/index.html",
@@ -36,5 +42,6 @@ def index(request):
             "latest_result": latest_result,
             "is_individual": is_individual_user(request.user),
             "is_system_admin": is_system_admin_user(request.user),
+            "recent_missing_items": recent_missing_items[:24],
         },
     )

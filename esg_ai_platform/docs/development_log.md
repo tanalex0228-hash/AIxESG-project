@@ -113,3 +113,10 @@
 - Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, `manage.py test --noinput`, 桓達企業 smoke pipeline, LLM feedback normalization check, and route smoke tests for `/intro/`, `/login/`, `/reports/upload/`, and `/` passed.
 - Fixes: System administrators without a default organization can now choose or create a test company on the upload page instead of being silently redirected; LLM feedback rating is normalized to A/B/C/D for stable UI display.
 - Notes: LLM management feedback uses OpenAI when `OPENAI_API_KEY` exists and deterministic rule-engine fallback otherwise.
+
+### Module: Report History, Loading Status, and Company Comparison
+
+- Completed: Fixed report list/detail access for system admins and public individual viewers, added an upload analysis status page with polling and completion actions, added report status JSON endpoint, added company/report GRI 305 missing-field comparison matrix, CSV export, and dashboard recent-missing summary.
+- Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, `manage.py test --noinput`, 桓達企業 smoke pipeline, and route smoke tests for reports list/detail/status/status JSON/compare/CSV passed.
+- Fixes: Report history no longer appears empty for system admins; report detail no longer 404s when a system admin opens analyzed reports from dashboard history; upload flow redirects to a progress page instead of leaving the browser on a long-running request.
+- Notes: Comparison rows are generated from active GRI required fields and each selected report's stored missing-item records.

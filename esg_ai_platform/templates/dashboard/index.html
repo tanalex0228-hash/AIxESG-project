@@ -10,6 +10,7 @@
   <div class="hero-actions">
     <a class="btn btn-primary" href="{% url 'reports:upload' %}">上傳報告書</a>
     <a class="btn btn-outline-primary" href="{% url 'reports:list' %}">查看紀錄</a>
+    <a class="btn btn-outline-primary" href="{% url 'reports:compare' %}">公司對比</a>
   </div>
 </div>
 
@@ -82,6 +83,22 @@
 {% else %}
 <section class="panel"><div class="empty-state">尚無完成的分析結果。</div></section>
 {% endif %}
+
+<section class="panel mt-3">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">近期缺漏總表</h2>
+      <p class="panel-kicker">彙整最近報告的 GRI 305 缺漏欄位</p>
+    </div>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:compare' %}">開啟對比矩陣</a>
+  </div>
+  <div class="table-responsive table-shell">
+    <table class="table">
+      <thead><tr><th>公司</th><th>年度</th><th>報告</th><th>GRI</th><th>缺漏欄位</th><th>嚴重度</th></tr></thead>
+      <tbody>{% for entry in recent_missing_items %}<tr><td>{{ entry.report.company_name }}</td><td>{{ entry.report.report_year }}</td><td><a href="{% url 'reports:detail' entry.report.pk %}">{{ entry.report.title }}</a></td><td>{{ entry.item.disclosure_code }}</td><td>{{ entry.item.item_name }}</td><td><span class="status-pill">{{ entry.item.severity }}</span></td></tr>{% empty %}<tr><td colspan="6">尚無缺漏資料。</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</section>
 
 <section class="panel mt-3">
   <div class="panel-header">

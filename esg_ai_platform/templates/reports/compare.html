@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}公司報告對比 | AIxESG{% endblock %}
+{% block content %}
+<div class="page-hero compact">
+  <div>
+    <div class="eyebrow">Comparison Matrix</div>
+    <h1 class="page-title small">公司報告缺漏對比</h1>
+    <p class="page-subtitle">選擇多份已完成分析的報告，把 GRI 305 必填欄位放在同一張表格比較，並可匯出 CSV。</p>
+  </div>
+</div>
+
+<section class="panel mb-3">
+  <form method="get" class="compare-picker">
+    <div>
+      <label for="report_ids">選擇報告</label>
+      <select id="report_ids" name="report_ids" multiple size="8">
+        {% for report in reports %}
+          <option value="{{ report.id }}" {% if report.id in selected_ids %}selected{% endif %}>
+            {{ report.company_name }} · {{ report.report_year }} · {{ report.title }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="compare-actions">
+      <button class="btn btn-primary" type="submit">更新對比</button>
+      <button class="btn btn-outline-primary" type="submit" name="export" value="csv">匯出 CSV</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">GRI 305 欄位矩陣</h2>
+      <p class="panel-kicker">Complete 表示未列為缺漏；Missing 表示該報告分析結果中缺少此欄位</p>
+    </div>
+  </div>
+  <div class="table-responsive table-shell comparison-table">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>GRI</th>
+          <th>欄位</th>
+          {% for report in selected_reports %}
+            <th>{{ report.company_name }}<br><small>{{ report.report_year }}</small></th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in comparison_rows %}
+          <tr>
+            <td>{{ row.disclosure_code }}</td>
+            <td>{{ row.field_label }}</td>
+            {% for cell in row.cells %}
+              <td><span class="matrix-pill {{ cell.status }}">{{ cell.status }}</span></td>
+            {% endfor %}
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">尚無可對比的分析結果。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

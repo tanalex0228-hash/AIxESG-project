@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}分析進度 | {{ report.title }}{% endblock %}
+{% block content %}
+<section class="loading-stage" data-status-url="{% url 'reports:status_json' report.pk %}">
+  <div class="loading-orbit" aria-hidden="true"></div>
+  <div class="eyebrow">{{ report.company_name }} · {{ report.report_year }}</div>
+  <h1>正在分析報告書</h1>
+  <p id="statusText">系統正在解析 PDF、建立向量、比對 GRI 規則並產生改善建議。</p>
+  <div class="progress loading-progress" role="progressbar" aria-label="分析進度">
+    <div id="statusBar" class="progress-bar" style="width: {{ report.analysis_job.progress|default:0 }}%"></div>
+  </div>
+  <strong id="statusProgress">{{ report.analysis_job.progress|default:0 }}%</strong>
+  <div id="statusActions" class="hero-actions justify-content-center mt-4{% if report.analysis_job.status != 'completed' %} d-none{% endif %}">
+    <a class="btn btn-primary" href="{% url 'reports:detail' report.pk %}">查看分析結果</a>
+    <a class="btn btn-outline-primary" href="{% url 'dashboard:index' %}">回到總覽</a>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const stage = document.querySelector(".loading-stage");
+  if (!stage) return;
+  const url = stage.dataset.statusUrl;
+  const text = document.getElementById("statusText");
+  const bar = document.getElementById("statusBar");
+  const progress = document.getElementById("statusProgress");
+  const actions = document.getElementById("statusActions");
+
+  async function poll() {
+    const response = await fetch(url, {headers: {"X-Requested-With": "XMLHttpRequest"}});
+    const data = await response.json();
+    bar.style.width = `${data.progress || 0}%`;
+    progress.textContent = `${data.progress || 0}%`;
+    if (data.failed) {
+      text.textContent = data.error_message || "分析失敗，請回到報告書列表確認錯誤。";
+      actions.classList.remove("d-none");
+      return;
+    }
+    if (data.completed) {
+      text.textContent = "分析完成，已產生分數、缺漏項目、標竿差距與改善建議。";
+      actions.classList.remove("d-none");
+      return;
+    }
+    text.textContent = `目前狀態：${data.status}`;
+    window.setTimeout(poll, 1800);
+  }
+  window.setTimeout(poll, 900);
+})();
+</script>
+{% endblock %}
