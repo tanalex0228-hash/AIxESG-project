@@ -344,9 +344,9 @@ def run_rule_engine_analysis(report, analysis_job=None):
         "dynamic_conclusion": conclusion,
     }
     result.save(update_fields=["total_score", "confidence_score", "summary", "raw_output", "updated_at"])
-    result.raw_output["llm_management_feedback"] = build_management_feedback(result)
-    result.save(update_fields=["raw_output", "updated_at"])
     report.latest_analysis_result = result
     report.save(update_fields=["latest_analysis_result", "updated_at"])
     recalculate_report_industry_metrics(report)
+    result.raw_output["llm_management_feedback"] = build_management_feedback(result)
+    result.save(update_fields=["raw_output", "updated_at"])
     return result

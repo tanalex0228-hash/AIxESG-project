@@ -1,19 +1,21 @@
 import csv
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from accounts.utils import get_user_organization, is_individual_user, is_system_admin_user
 from analysis.models import GeneratedReport, IndustryMetricSnapshot
-from analysis.services.industry_metrics import recalculate_industry_metrics
+from analysis.services.industry_metrics import industry_comparison_context, recalculate_industry_metrics
 from gri.models import GRIRequiredField
 from organizations.models import Organization
 
 from .forms import ReportUploadForm
-from .models import AnalysisJob, Report
+from .models import AnalysisJob, IndustryCategory, Report
 from .tasks import parse_pdf_task, reanalyze_report_task
 
 
@@ -307,16 +309,19 @@ def report_status_json(request, pk):
 
 @login_required
 def compare_reports(request):
+    mode = request.GET.get("mode", "company")
     reports_qs = (
         _accessible_reports(request.user)
         .filter(latest_analysis_result__isnull=False)
-        .select_related("latest_analysis_result", "organization")
+        .select_related("latest_analysis_result", "organization", "industry_category_ref", "industry_metric", "industry_metric__industry")
         .prefetch_related("latest_analysis_result__missing_items", "latest_analysis_result__disclosure_scores")
         .order_by("-created_at")
     )
     selected_ids = [int(value) for value in request.GET.getlist("report_ids") if value.isdigit()]
-    selected_reports = list(reports_qs.filter(id__in=selected_ids)) if selected_ids else list(reports_qs[:4])
+    selected_industry_codes = [value for value in request.GET.getlist("industry_codes") if value]
+    selected_reports = list(reports_qs.filter(id__in=selected_ids)) if selected_ids else list(_filter_compare_reports(reports_qs, request.GET)[:4])
     rows, tooltip_payloads = _comparison_rows(selected_reports)
+    industry_comparison_rows = industry_comparison_context(_accessible_reports(request.user), selected_industry_codes) if mode == "industry" and selected_industry_codes else []
 
     if request.GET.get("export") == "csv":
         response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
@@ -335,6 +340,10 @@ def compare_reports(request):
             "reports": reports_qs[:50],
             "selected_reports": selected_reports,
             "selected_ids": selected_ids,
+            "mode": mode,
+            "industries": IndustryCategory.objects.filter(is_active=True).order_by("code"),
+            "selected_industry_codes": selected_industry_codes,
+            "industry_comparison_rows": industry_comparison_rows,
             "comparison_rows": rows,
             "comparison_tooltips": tooltip_payloads,
         },
@@ -342,27 +351,187 @@ def compare_reports(request):
 
 
 @login_required
-def ranking_reports(request):
+def compare_options_json(request):
+    mode = request.GET.get("mode", "company")
     reports = (
         _accessible_reports(request.user)
         .filter(latest_analysis_result__isnull=False)
-        .select_related("latest_analysis_result", "organization")
-        .order_by("-latest_analysis_result__total_score", "-report_year", "company_name")
+        .select_related("industry_category_ref", "latest_analysis_result", "industry_metric", "industry_metric__industry")
+    )
+    reports = _filter_compare_reports(reports, request.GET)
+    if mode == "industry":
+        industry_codes = list(reports.filter(industry_category_ref__isnull=False).values_list("industry_category_ref__code", flat=True).distinct()[:100])
+        industries = IndustryCategory.objects.filter(code__in=industry_codes).order_by("code")
+        rows = industry_comparison_context(_accessible_reports(request.user), [industry.code for industry in industries])
+        return JsonResponse(
+            {
+                "mode": "industry",
+                "industries": [
+                    {
+                        "code": row["industry"].code,
+                        "name": row["industry"].name_zh,
+                        "company_count": row["company_count"],
+                        "report_count": row["report_count"],
+                        "average_raw_score": str(row["average_raw_score"]),
+                        "average_pr": str(row["average_pr"]),
+                        "average_disclosure_rate": str(row["average_disclosure_rate"]),
+                        "average_missing_count": str(row["average_missing_count"]),
+                        "confidence_level": row["confidence_level"],
+                    }
+                    for row in rows
+                ],
+            }
+        )
+    report_list = list(reports[:100])
+    metrics = {
+        metric.report_id: metric
+        for metric in IndustryMetricSnapshot.objects.filter(report__in=report_list).select_related("industry")
+    }
+    return JsonResponse(
+        {
+            "mode": "company",
+            "reports": [
+                {
+                    "id": report.id,
+                    "company": report.company_name,
+                    "year": report.report_year,
+                    "title": report.title,
+                    "industry": report.industry_category_ref.name_zh if report.industry_category_ref else report.industry_category,
+                    "industry_code": report.industry_category_ref.code if report.industry_category_ref else "",
+                    "grade": metrics.get(report.id).grade if metrics.get(report.id) else "",
+                    "pr": str(metrics.get(report.id).percentile_rank) if metrics.get(report.id) else "",
+                }
+                for report in report_list
+            ],
+        }
+    )
+
+
+def _filter_compare_reports(reports, params):
+    industry = params.get("industry", "").strip()
+    year = params.get("year", "").strip()
+    grade = params.get("grade", "").strip()
+    company = params.get("company", "").strip()
+    pr_min = params.get("pr_min", "").strip()
+    pr_max = params.get("pr_max", "").strip()
+    if industry:
+        reports = reports.filter(industry_category_ref__code=industry)
+    if year.isdigit():
+        reports = reports.filter(report_year=int(year))
+    if company:
+        reports = reports.filter(company_name__icontains=company)
+    metric_filters = Q()
+    if grade:
+        metric_filters &= Q(industry_metric__grade=grade)
+    min_pr = _parse_decimal(pr_min)
+    max_pr = _parse_decimal(pr_max)
+    if min_pr is not None:
+        metric_filters &= Q(industry_metric__percentile_rank__gte=min_pr)
+    if max_pr is not None:
+        metric_filters &= Q(industry_metric__percentile_rank__lte=max_pr)
+    if metric_filters:
+        reports = reports.filter(metric_filters)
+    return reports.order_by("-report_year", "company_name")
+
+
+@login_required
+def ranking_reports(request):
+    accessible_ids = _accessible_reports(request.user).filter(latest_analysis_result__isnull=False).values_list("id", flat=True)
+    metrics = (
+        IndustryMetricSnapshot.objects.filter(report_id__in=accessible_ids)
+        .select_related("industry", "report", "analysis_result")
+        .order_by("-percentile_rank", "-raw_score", "report__company_name")
     )
     company = request.GET.get("company", "").strip()
     year = request.GET.get("year", "").strip()
+    industry = request.GET.get("industry", "").strip()
+    grade = request.GET.get("grade", "").strip()
+    pr_min = request.GET.get("pr_min", "").strip()
+    pr_max = request.GET.get("pr_max", "").strip()
+    raw_min = request.GET.get("raw_min", "").strip()
+    raw_max = request.GET.get("raw_max", "").strip()
+    sort = request.GET.get("sort", "pr").strip()
+    direction = request.GET.get("direction", "desc").strip()
     if company:
-        reports = reports.filter(company_name__icontains=company)
+        metrics = metrics.filter(report__company_name__icontains=company)
     if year.isdigit():
-        reports = reports.filter(report_year=int(year))
-    recalculate_industry_metrics()
-    report_ids = list(reports.values_list("id", flat=True)[:100])
-    metrics = {
-        metric.report_id: metric
-        for metric in IndustryMetricSnapshot.objects.filter(report_id__in=report_ids).select_related("industry")
-    }
-    ranked_reports = list(reports[:100])
-    ranked_reports.sort(key=lambda report: (metrics.get(report.id).percentile_rank if metrics.get(report.id) else 0, report.latest_analysis_result.total_score), reverse=True)
-    for report in ranked_reports:
-        report.industry_metric_display = metrics.get(report.id)
-    return render(request, "reports/ranking.html", {"reports": ranked_reports, "filters": {"company": company, "year": year}})
+        metrics = metrics.filter(report__report_year=int(year))
+    if industry:
+        metrics = metrics.filter(industry__code=industry)
+    if grade:
+        metrics = metrics.filter(grade=grade)
+    metrics = _apply_decimal_range(metrics, "percentile_rank", pr_min, pr_max)
+    metrics = _apply_decimal_range(metrics, "raw_score", raw_min, raw_max)
+    order_field = _ranking_order_field(sort)
+    if direction == "asc":
+        metrics = metrics.order_by(order_field, "report__company_name")
+    else:
+        metrics = metrics.order_by(f"-{order_field}", "report__company_name")
+    return render(
+        request,
+        "reports/ranking.html",
+        {
+            "metrics": metrics[:100],
+            "industries": IndustryCategory.objects.filter(is_active=True).order_by("code"),
+            "filters": {
+                "company": company,
+                "year": year,
+                "industry": industry,
+                "grade": grade,
+                "pr_min": pr_min,
+                "pr_max": pr_max,
+                "raw_min": raw_min,
+                "raw_max": raw_max,
+                "sort": sort,
+                "direction": direction,
+            },
+            "sort_links": _ranking_sort_links(request),
+        },
+    )
+
+
+def _apply_decimal_range(queryset, field, minimum, maximum):
+    minimum_value = _parse_decimal(minimum)
+    maximum_value = _parse_decimal(maximum)
+    if minimum_value is not None:
+        queryset = queryset.filter(**{f"{field}__gte": minimum_value})
+    if maximum_value is not None:
+        queryset = queryset.filter(**{f"{field}__lte": maximum_value})
+    return queryset
+
+
+def _parse_decimal(value):
+    if value == "":
+        return None
+    try:
+        return Decimal(value)
+    except (InvalidOperation, TypeError):
+        return None
+
+
+def _ranking_order_field(sort):
+    return {
+        "company": "report__company_name",
+        "year": "report__report_year",
+        "industry": "industry__code",
+        "raw": "raw_score",
+        "pr": "percentile_rank",
+        "grade": "grade",
+        "z": "z_score",
+        "missing": "missing_count",
+        "disclosure": "disclosure_rate",
+        "analyzed": "analysis_result__analyzed_at",
+    }.get(sort, "percentile_rank")
+
+
+def _ranking_sort_links(request):
+    links = {}
+    current_sort = request.GET.get("sort", "pr")
+    current_direction = request.GET.get("direction", "desc")
+    for key in ["company", "year", "industry", "raw", "pr", "grade", "z", "missing", "disclosure", "analyzed"]:
+        params = request.GET.copy()
+        next_direction = "asc" if current_sort != key or current_direction == "desc" else "desc"
+        params["sort"] = key
+        params["direction"] = next_direction
+        links[key] = f"?{params.urlencode()}"
+    return links

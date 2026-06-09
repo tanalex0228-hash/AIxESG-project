@@ -1,8 +1,9 @@
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, render
 
 from accounts.utils import get_user_organization, is_individual_user, is_system_admin_user
-from analysis.services.industry_metrics import industry_detail_context, industry_overview, recalculate_industry_metrics
+from analysis.services.industry_metrics import industry_detail_context, industry_overview
 from reports.models import IndustryCategory, Report
 
 
@@ -22,7 +23,6 @@ def index(request):
     else:
         reports = Report.objects.filter(organization=organization).select_related("latest_analysis_result", "organization") if organization else Report.objects.none()
         public_reports = Report.objects.none()
-    recalculate_industry_metrics()
     completed_reports = reports.filter(status="completed", latest_analysis_result__isnull=False)
     industry_cards = industry_overview(reports)
     total_companies = completed_reports.values("company_name").distinct().count()
@@ -51,8 +51,7 @@ def index(request):
 @login_required
 def industry_detail(request, industry_name):
     reports = _accessible_reports_for_dashboard(request.user)
-    recalculate_industry_metrics()
-    industry = get_object_or_404(IndustryCategory, name_zh=industry_name, is_active=True)
+    industry = get_object_or_404(IndustryCategory, Q(code=industry_name) | Q(name_zh=industry_name), is_active=True)
     context = industry_detail_context(industry, reports)
     snapshots = context["snapshots"]
     company = request.GET.get("company", "").strip()

@@ -4,35 +4,111 @@
 <div class="page-hero compact">
   <div>
     <div class="eyebrow">Comparison Matrix</div>
-    <h1 class="page-title small">公司報告缺漏對比</h1>
-    <p class="page-subtitle">選擇多份已完成分析的報告，把 GRI 305 必填欄位放在同一張表格比較，並可匯出 CSV。</p>
+    <h1 class="page-title small">揭露對比工作台</h1>
+    <p class="page-subtitle">先選擇比較模式，再用產業、年度、Grade、PR 與公司名稱縮小候選清單，避免一次面對過多報告。</p>
   </div>
 </div>
 
-<section class="panel mb-3">
-  <form method="get" class="compare-picker">
-    <div>
-      <label for="report_ids">選擇報告</label>
-      <select id="report_ids" name="report_ids" multiple size="8">
-        {% for report in reports %}
-          <option value="{{ report.id }}" {% if report.id in selected_ids %}selected{% endif %}>
-            {{ report.company_name }} · {{ report.report_year }} · {{ report.title }}
-          </option>
-        {% endfor %}
-      </select>
+<section class="panel mb-3 compare-workbench" data-options-url="{% url 'reports:compare_options_json' %}">
+  <form method="get" id="compareForm">
+    <div class="step-grid">
+      <div class="step-card">
+        <span>Step 1</span>
+        <h2>比較模式</h2>
+        <label><input type="radio" name="mode" value="company" {% if mode != "industry" %}checked{% endif %}> 公司比較</label>
+        <label><input type="radio" name="mode" value="industry" {% if mode == "industry" %}checked{% endif %}> 產業比較</label>
+      </div>
+      <div class="step-card wide">
+        <span>Step 2</span>
+        <h2>篩選條件</h2>
+        <div class="filter-row compact">
+          <div>
+            <label for="compareIndustry">產業</label>
+            <select id="compareIndustry" name="industry">
+              <option value="">全部</option>
+              {% for industry in industries %}
+                <option value="{{ industry.code }}" {% if request.GET.industry == industry.code %}selected{% endif %}>{{ industry.code }} {{ industry.name_zh }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="compareYear">年度</label>
+            <input id="compareYear" name="year" value="{{ request.GET.year }}" placeholder="2024">
+          </div>
+          <div>
+            <label for="compareGrade">Grade</label>
+            <select id="compareGrade" name="grade">
+              <option value="">全部</option>
+              <option value="A+" {% if request.GET.grade == "A+" %}selected{% endif %}>A+</option>
+              <option value="A" {% if request.GET.grade == "A" %}selected{% endif %}>A</option>
+              <option value="B" {% if request.GET.grade == "B" %}selected{% endif %}>B</option>
+              <option value="C" {% if request.GET.grade == "C" %}selected{% endif %}>C</option>
+              <option value="D" {% if request.GET.grade == "D" %}selected{% endif %}>D</option>
+            </select>
+          </div>
+          <div>
+            <label for="comparePrMin">PR</label>
+            <div class="range-pair">
+              <input id="comparePrMin" name="pr_min" value="{{ request.GET.pr_min }}" placeholder="min">
+              <input name="pr_max" value="{{ request.GET.pr_max }}" placeholder="max">
+            </div>
+          </div>
+          <div>
+            <label for="compareCompany">公司</label>
+            <input id="compareCompany" name="company" value="{{ request.GET.company }}" placeholder="台積、聯發、光寶">
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="compare-actions">
-      <button class="btn btn-primary" type="submit">更新對比</button>
-      <button class="btn btn-outline-primary" type="submit" name="export" value="csv">匯出 CSV</button>
+    <div class="step-card mt-3">
+      <span>Step 3 / 4</span>
+      <h2>候選清單</h2>
+      <div id="compareCandidates" class="candidate-list" aria-live="polite">載入候選資料中...</div>
+      <div class="compare-actions mt-3">
+        <button class="btn btn-primary" type="submit">產生對比</button>
+        <button class="btn btn-outline-primary" type="submit" name="export" value="csv">匯出 CSV</button>
+      </div>
     </div>
   </form>
 </section>
 
+{% if mode == "industry" %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">產業比較</h2>
+      <p class="panel-kicker">比較各產業平均 Raw Score、PR、揭露率、缺漏數與常見缺口。</p>
+    </div>
+  </div>
+  <div class="table-responsive table-shell">
+    <table class="table align-middle">
+      <thead><tr><th>產業</th><th>公司數</th><th>報告數</th><th>平均 Raw</th><th>平均 PR</th><th>平均揭露率</th><th>平均缺漏</th><th>Confidence</th><th>Top Missing Items</th></tr></thead>
+      <tbody>
+        {% for row in industry_comparison_rows %}
+          <tr>
+            <td><a href="{% url 'dashboard:industry_detail' row.industry.code %}">{{ row.industry.code }} {{ row.industry.name_zh }}</a></td>
+            <td>{{ row.company_count }}</td>
+            <td>{{ row.report_count }}</td>
+            <td>{{ row.average_raw_score }}</td>
+            <td>{{ row.average_pr }}</td>
+            <td>{{ row.average_disclosure_rate }}%</td>
+            <td>{{ row.average_missing_count }}</td>
+            <td>{{ row.confidence_level }}</td>
+            <td>{% for item in row.top_missing_items %}<span class="mini-tag">{{ item.label }} {{ item.ratio }}%</span>{% empty %}-{% endfor %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="9">請先選擇欲比較的產業。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% else %}
 <section class="panel">
   <div class="panel-header">
     <div>
       <h2 class="panel-title">GRI 305 欄位矩陣</h2>
-      <p class="panel-kicker">Complete 表示未列為缺漏；Missing 表示該報告分析結果中缺少此欄位</p>
+      <p class="panel-kicker">Complete 表示未列為缺漏；Missing 表示該報告分析結果中缺少此欄位。</p>
     </div>
   </div>
   <div class="table-responsive table-shell comparison-table">
@@ -52,15 +128,7 @@
             <td>{{ row.disclosure_code }}</td>
             <td>{{ row.field_label }}</td>
             {% for cell in row.cells %}
-              <td>
-                <span
-                  class="matrix-pill {{ cell.status }}"
-                  data-comparison-tooltip="{{ cell.tooltip_key }}"
-                  tabindex="0"
-                >
-                  {{ cell.status }}
-                </span>
-              </td>
+              <td><span class="matrix-pill {{ cell.status }}" data-comparison-tooltip="{{ cell.tooltip_key }}" tabindex="0">{{ cell.status }}</span></td>
             {% endfor %}
           </tr>
         {% empty %}
@@ -71,4 +139,5 @@
   </div>
 </section>
 {{ comparison_tooltips|json_script:"comparison-tooltip-data" }}
+{% endif %}
 {% endblock %}

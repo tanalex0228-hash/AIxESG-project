@@ -162,3 +162,10 @@
 - Tests: `makemigrations --check --dry-run`, `migrate`, `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, `manage.py test --noinput`, seed-data validation, and route smoke tests for dashboard, industry detail, ranking, and report list passed.
 - Fixes: Grade now comes from same-industry percentile rank instead of raw score, while raw score remains visible; Z-score is stored for future analysis but hidden from Sprint 2A frontend.
 - Notes: Sprint 2A intentionally keeps sorting to a single selected field and defers LLM commentary v2, Industry Benchmark, multi-sort, Z-score UI, and advanced filters to later sprint slices.
+
+### Module: Sprint 2B/2C Industry Intelligence Enhancement
+
+- Completed: Upgraded ranking with industry filters, range filters, sortable columns, clickable industry links, Z-score display, and PR/Z-score tooltips; upgraded industry detail with histograms, trend charts, top missing ratios, and leaders; rebuilt comparison into an AJAX-driven company/industry workbench; upgraded LLM management feedback to v2 with PR, Grade, Z-score, industry sample size, confidence level, benchmark commentary, industry insight, and short/medium/long action plan.
+- Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, `manage.py test --noinput`, and route smoke tests for dashboard, industry detail by code/name, ranking filters, compare page, and compare JSON endpoints passed.
+- Fixes: Removed full industry metric recalculation from dashboard hot paths; current in-progress analysis can still refresh its own industry snapshot before LLM feedback generation.
+- Notes: Multi-column sorting remains deferred; this release implements single-column asc/desc sorting across the ranking fields and dynamic AJAX candidate search for comparison setup.

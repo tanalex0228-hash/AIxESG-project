@@ -1,10 +1,13 @@
 from django.test import TestCase
 
 from analysis.agents.document_locator import DocumentLocatorAgent
+from analysis.models import AnalysisResult
 from analysis.services.analysis_runner import run_gri_305_analysis
+from analysis.services.industry_metrics import recalculate_industry_metrics
+from analysis.services.llm_feedback import build_management_feedback
 from gri.models import GRICheckItem, GRIDisclosure, GRIStandard, ScoringWeight
 from organizations.models import Organization
-from reports.models import AnalysisJob, Report, ReportChunk
+from reports.models import AnalysisJob, IndustryCategory, Report, ReportChunk
 
 
 class AnalysisPipelineTests(TestCase):
@@ -76,3 +79,21 @@ class AnalysisPipelineTests(TestCase):
         self.assertEqual(second.version_number, 2)
         self.assertFalse(self.report.analysis_results.get(pk=first.pk).is_latest)
         self.assertEqual(self.report.analysis_result, second)
+
+    def test_management_feedback_v2_fallback_includes_industry_context(self):
+        industry, _ = IndustryCategory.objects.get_or_create(code="24", defaults={"name_zh": "半導體業", "name_en": "Semiconductors"})
+        self.report.industry_category_ref = industry
+        self.report.industry_category = industry.name_zh
+        self.report.status = "completed"
+        self.report.save(update_fields=["industry_category_ref", "industry_category", "status"])
+        result = AnalysisResult.objects.create(report=self.report, total_score=82, confidence_score=80)
+        recalculate_industry_metrics(industry)
+
+        feedback = build_management_feedback(result)
+
+        self.assertIn("executive_summary", feedback)
+        self.assertIn("benchmark_commentary", feedback)
+        self.assertIn("industry_insight", feedback)
+        self.assertIn("action_plan", feedback)
+        self.assertIn("confidence_level", feedback)
+        self.assertIn("benchmark_sample", feedback)

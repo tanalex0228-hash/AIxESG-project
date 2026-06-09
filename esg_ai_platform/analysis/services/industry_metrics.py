@@ -90,11 +90,23 @@ def recalculate_industry_metrics(industry=None):
 def recalculate_report_industry_metrics(report):
     category = normalize_report_industry(report)
     if category:
-        recalculate_industry_metrics(category)
+        ensure_grade_thresholds()
+        _recalculate_one_industry(category, include_report_id=report.id)
 
 
-def _recalculate_one_industry(category):
-    reports = list(completed_reports_qs().filter(industry_category_ref=category))
+def _recalculate_one_industry(category, include_report_id=None):
+    queryset = completed_reports_qs().filter(industry_category_ref=category)
+    if include_report_id:
+        queryset = queryset | Report.objects.filter(
+            id=include_report_id,
+            latest_analysis_result__isnull=False,
+            industry_category_ref=category,
+        ).select_related("latest_analysis_result", "industry_category_ref", "organization").prefetch_related(
+            "latest_analysis_result__disclosure_scores",
+            "latest_analysis_result__missing_items",
+            "latest_analysis_result__recommendations",
+        )
+    reports = list(queryset.distinct())
     if not reports:
         return
     scores = [Decimal(report.latest_analysis_result.total_score) for report in reports]
@@ -182,11 +194,65 @@ def industry_detail_context(industry, accessible_reports):
         "average_disclosure_rate": _average([item.disclosure_rate for item in items]),
         "average_missing_count": _average([Decimal(item.missing_count) for item in items]),
         "most_common_missing_items": _most_common_missing(items),
+        "top_missing_items": _top_missing_items(items),
         "scope_disclosure": _scope_disclosure(items),
         "best_performers": sorted(items, key=lambda item: (item.percentile_rank, item.raw_score), reverse=True)[:5],
+        "top_raw_performers": sorted(items, key=lambda item: (item.raw_score, item.percentile_rank), reverse=True)[:5],
+        "distribution": industry_distribution_context(items),
+        "trend": industry_trend_context(items),
         "confidence_level": confidence_level(len({item.report.company_name for item in items})),
         "snapshots": items,
     }
+
+
+def industry_distribution_context(snapshots):
+    return {
+        "raw_score": _histogram([snapshot.raw_score for snapshot in snapshots], 10, 0, 100),
+        "pr": _histogram([snapshot.percentile_rank for snapshot in snapshots], 10, 0, 100),
+        "grade": _grade_distribution(snapshots),
+    }
+
+
+def industry_trend_context(snapshots):
+    grouped = defaultdict(list)
+    for snapshot in snapshots:
+        grouped[snapshot.report.report_year].append(snapshot)
+    labels = sorted(grouped)
+    return {
+        "labels": labels,
+        "raw_score": [_average([item.raw_score for item in grouped[year]]) for year in labels],
+        "disclosure_rate": [_average([item.disclosure_rate for item in grouped[year]]) for year in labels],
+    }
+
+
+def industry_comparison_context(accessible_reports, industry_codes):
+    industries = list(IndustryCategory.objects.filter(is_active=True, code__in=industry_codes).order_by("code"))
+    report_ids = list(accessible_reports.filter(status="completed", latest_analysis_result__isnull=False).values_list("id", flat=True))
+    snapshots = (
+        IndustryMetricSnapshot.objects.filter(report_id__in=report_ids, industry__in=industries)
+        .select_related("industry", "report", "analysis_result")
+        .prefetch_related("analysis_result__missing_items")
+    )
+    grouped = defaultdict(list)
+    for snapshot in snapshots:
+        grouped[snapshot.industry_id].append(snapshot)
+    rows = []
+    for industry in industries:
+        items = grouped.get(industry.id, [])
+        rows.append(
+            {
+                "industry": industry,
+                "company_count": len({item.report.company_name for item in items}),
+                "report_count": len(items),
+                "average_raw_score": _average([item.raw_score for item in items]),
+                "average_pr": _average([item.percentile_rank for item in items]),
+                "average_disclosure_rate": _average([item.disclosure_rate for item in items]),
+                "average_missing_count": _average([Decimal(item.missing_count) for item in items]),
+                "top_missing_items": _top_missing_items(items, limit=5),
+                "confidence_level": confidence_level(len({item.report.company_name for item in items})),
+            }
+        )
+    return rows
 
 
 def _average(values):
@@ -202,6 +268,52 @@ def _most_common_missing(snapshots, limit=3):
         for item in snapshot.analysis_result.missing_items.all():
             counter[f"{item.disclosure_code} {item.item_name}"] += 1
     return [{"label": label, "count": count} for label, count in counter.most_common(limit)]
+
+
+def _top_missing_items(snapshots, limit=10):
+    counter = Counter()
+    total = len(snapshots)
+    for snapshot in snapshots:
+        seen = set()
+        for item in snapshot.analysis_result.missing_items.all():
+            label = f"{item.disclosure_code} {item.item_name}"
+            if label not in seen:
+                counter[label] += 1
+                seen.add(label)
+    return [
+        {
+            "label": label,
+            "count": count,
+            "ratio": _round((Decimal(count) / Decimal(total)) * Decimal("100")) if total else Decimal("0.00"),
+        }
+        for label, count in counter.most_common(limit)
+    ]
+
+
+def _histogram(values, bin_count, minimum, maximum):
+    labels = []
+    counts = [0 for _ in range(bin_count)]
+    minimum = Decimal(minimum)
+    maximum = Decimal(maximum)
+    width = (maximum - minimum) / Decimal(bin_count)
+    for index in range(bin_count):
+        start = minimum + width * Decimal(index)
+        end = start + width
+        labels.append(f"{int(start)}-{int(end)}")
+    for value in values:
+        value = Decimal(value)
+        if value < minimum or value > maximum:
+            continue
+        bucket = int((value - minimum) / width) if width else 0
+        bucket = min(bucket, bin_count - 1)
+        counts[bucket] += 1
+    return {"labels": labels, "values": counts}
+
+
+def _grade_distribution(snapshots):
+    labels = ["A+", "A", "B", "C", "D"]
+    counter = Counter(snapshot.grade for snapshot in snapshots)
+    return {"labels": labels, "values": [counter[label] for label in labels]}
 
 
 def _scope_disclosure(snapshots):

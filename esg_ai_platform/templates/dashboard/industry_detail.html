@@ -5,7 +5,7 @@
   <div>
     <div class="eyebrow">Industry Detail</div>
     <h1 class="page-title small">{{ industry.code }} {{ industry.name_zh }}</h1>
-    <p class="page-subtitle">同產業 Raw Score、PR、Grade 與揭露完整度比較。Z-score 已計算保存，但本頁先不顯示。</p>
+    <p class="page-subtitle">同產業 Raw Score、PR、Grade、Z-score 與揭露完整度比較，協助辨識產業標竿與常見揭露缺口。</p>
   </div>
   <div class="hero-actions">
     <a class="btn btn-outline-primary" href="{% url 'dashboard:index' %}">回總覽</a>
@@ -39,6 +39,73 @@
     {% empty %}
       <em>尚無缺漏資料</em>
     {% endfor %}
+  </div>
+</section>
+
+<section class="panel mb-3">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">Distribution & Trend</h2>
+      <p class="panel-kicker">Histogram 呈現目前樣本分布；Trend 依報告年度彙整產業平均。</p>
+    </div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-box compact"><canvas id="rawHistogram"></canvas></div>
+    <div class="chart-box compact"><canvas id="prHistogram"></canvas></div>
+    <div class="chart-box compact"><canvas id="gradeDistribution"></canvas></div>
+    <div class="chart-box compact wide"><canvas id="industryTrend"></canvas></div>
+  </div>
+</section>
+
+<section class="panel mb-3">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">Top Missing Items Ranking</h2>
+      <p class="panel-kicker">缺漏比例以本產業目前可比較報告數為分母。</p>
+    </div>
+  </div>
+  <div class="table-responsive table-shell">
+    <table class="table align-middle">
+      <thead><tr><th>排名</th><th>缺漏項目</th><th>缺漏次數</th><th>缺漏比例</th></tr></thead>
+      <tbody>
+        {% for item in top_missing_items %}
+          <tr><td>{{ forloop.counter }}</td><td>{{ item.label }}</td><td>{{ item.count }}</td><td>{{ item.ratio }}%</td></tr>
+        {% empty %}
+          <tr><td colspan="4">尚無缺漏資料。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel mb-3">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">Industry Leaders</h2>
+      <p class="panel-kicker">快速查看同產業 PR 與 Raw Score 標竿企業。</p>
+    </div>
+  </div>
+  <div class="leader-grid">
+    <div>
+      <h3 class="subsection-title">Top 5 PR</h3>
+      <ol class="leader-list">
+        {% for item in best_performers %}
+          <li><a href="{% url 'reports:detail' item.report.pk %}">{{ item.report.company_name }}</a><span>PR {{ item.percentile_rank }}</span></li>
+        {% empty %}
+          <li>尚無資料</li>
+        {% endfor %}
+      </ol>
+    </div>
+    <div>
+      <h3 class="subsection-title">Top 5 Raw Score</h3>
+      <ol class="leader-list">
+        {% for item in top_raw_performers %}
+          <li><a href="{% url 'reports:detail' item.report.pk %}">{{ item.report.company_name }}</a><span>Raw {{ item.raw_score }}</span></li>
+        {% empty %}
+          <li>尚無資料</li>
+        {% endfor %}
+      </ol>
+    </div>
   </div>
 </section>
 
@@ -104,6 +171,7 @@
           <th>Raw Score</th>
           <th>PR</th>
           <th>Grade</th>
+          <th title="Z-score 表示高於或低於產業平均幾個標準差。">Z-score</th>
           <th>缺漏數</th>
           <th>揭露完整度</th>
           <th>分析日期</th>
@@ -117,15 +185,18 @@
             <td><span class="score-pill">{{ item.raw_score }}</span></td>
             <td>{{ item.percentile_rank }}</td>
             <td><span class="grade-pill grade-{{ item.grade|lower }}">{{ item.grade }}</span></td>
+            <td><span title="Z-score 表示高於或低於產業平均幾個標準差。">{{ item.z_score }}</span></td>
             <td>{{ item.missing_count }}</td>
             <td>{{ item.disclosure_rate }}%</td>
             <td>{{ item.analysis_result.analyzed_at|date:"Y-m-d" }}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="8">此產業目前沒有可比較的分析報告。</td></tr>
+          <tr><td colspan="9">此產業目前沒有可比較的分析報告。</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </section>
+{{ distribution|json_script:"industry-distribution-data" }}
+{{ trend|json_script:"industry-trend-data" }}
 {% endblock %}

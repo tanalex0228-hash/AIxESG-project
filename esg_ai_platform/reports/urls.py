@@ -8,6 +8,7 @@ urlpatterns = [
     path("", views.report_list, name="list"),
     path("upload/", views.upload_report, name="upload"),
     path("compare/", views.compare_reports, name="compare"),
+    path("compare/options.json", views.compare_options_json, name="compare_options_json"),
     path("ranking/", views.ranking_reports, name="ranking"),
     path("<int:pk>/status/", views.report_status, name="status"),
     path("<int:pk>/status.json", views.report_status_json, name="status_json"),

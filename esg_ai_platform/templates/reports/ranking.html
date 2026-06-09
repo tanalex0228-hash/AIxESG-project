@@ -4,8 +4,8 @@
 <div class="page-hero compact">
   <div>
     <div class="eyebrow">Ranking</div>
-    <h1 class="page-title small">ESG 報告排名比較</h1>
-    <p class="page-subtitle">以同產業 PR 與 Grade 排序，保留 Raw Score 讓使用者同時看見原始分數與相對表現。</p>
+    <h1 class="page-title small">Carbon Disclosure Ranking</h1>
+    <p class="page-subtitle">以同產業 PR、Raw Score、Grade、Z-score 與揭露完整度探索企業碳揭露相對表現。</p>
   </div>
   <div class="hero-actions">
     <a class="btn btn-outline-primary" href="{% url 'reports:compare' %}">缺漏矩陣</a>
@@ -13,15 +13,51 @@
 </div>
 
 <section class="panel mb-3">
-  <form class="filter-row" method="get">
+  <form class="filter-row wide" method="get">
     <div>
       <label for="company">公司</label>
-      <input id="company" name="company" value="{{ filters.company }}" placeholder="輸入公司名稱">
+      <input id="company" name="company" value="{{ filters.company }}" placeholder="台積、聯發、光寶">
     </div>
     <div>
       <label for="year">年度</label>
-      <input id="year" name="year" value="{{ filters.year }}" placeholder="例如 2024">
+      <input id="year" name="year" value="{{ filters.year }}" placeholder="2024">
     </div>
+    <div>
+      <label for="industry">產業</label>
+      <select id="industry" name="industry">
+        <option value="">全部</option>
+        {% for industry in industries %}
+          <option value="{{ industry.code }}" {% if filters.industry == industry.code %}selected{% endif %}>{{ industry.code }} {{ industry.name_zh }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="grade">Grade</label>
+      <select id="grade" name="grade">
+        <option value="">全部</option>
+        <option value="A+" {% if filters.grade == "A+" %}selected{% endif %}>A+</option>
+        <option value="A" {% if filters.grade == "A" %}selected{% endif %}>A</option>
+        <option value="B" {% if filters.grade == "B" %}selected{% endif %}>B</option>
+        <option value="C" {% if filters.grade == "C" %}selected{% endif %}>C</option>
+        <option value="D" {% if filters.grade == "D" %}selected{% endif %}>D</option>
+      </select>
+    </div>
+    <div>
+      <label for="pr_min">PR 區間</label>
+      <div class="range-pair">
+        <input id="pr_min" name="pr_min" value="{{ filters.pr_min }}" placeholder="min">
+        <input name="pr_max" value="{{ filters.pr_max }}" placeholder="max">
+      </div>
+    </div>
+    <div>
+      <label for="raw_min">Raw 區間</label>
+      <div class="range-pair">
+        <input id="raw_min" name="raw_min" value="{{ filters.raw_min }}" placeholder="min">
+        <input name="raw_max" value="{{ filters.raw_max }}" placeholder="max">
+      </div>
+    </div>
+    <input type="hidden" name="sort" value="{{ filters.sort }}">
+    <input type="hidden" name="direction" value="{{ filters.direction }}">
     <div class="filter-actions">
       <button class="btn btn-primary" type="submit">篩選</button>
       <a class="btn btn-outline-primary" href="{% url 'reports:ranking' %}">清除</a>
@@ -33,27 +69,45 @@
   <div class="panel-header">
     <div>
       <h2 class="panel-title">排名表</h2>
-      <p class="panel-kicker">Grade 由同產業 PR 決定，避免跨產業直接比較造成低估。</p>
+      <p class="panel-kicker">點擊欄位標題可切換 Ascending / Descending。</p>
     </div>
   </div>
   <div class="table-responsive table-shell">
-    <table class="table">
-      <thead><tr><th>排名</th><th>公司</th><th>年度</th><th>產業</th><th>報告</th><th>Raw Score</th><th>PR</th><th>Grade</th><th>狀態</th></tr></thead>
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>排名</th>
+          <th><a href="{{ sort_links.company }}">公司</a></th>
+          <th><a href="{{ sort_links.year }}">年度</a></th>
+          <th><a href="{{ sort_links.industry }}">產業</a></th>
+          <th>報告</th>
+          <th><a href="{{ sort_links.raw }}">Raw Score</a></th>
+          <th><a href="{{ sort_links.pr }}" title="PR 表示超越同產業多少比例企業。">PR</a></th>
+          <th><a href="{{ sort_links.grade }}">Grade</a></th>
+          <th><a href="{{ sort_links.z }}" title="Z-score 表示高於或低於產業平均幾個標準差。">Z-score</a></th>
+          <th><a href="{{ sort_links.missing }}">缺漏數</a></th>
+          <th><a href="{{ sort_links.disclosure }}">揭露率</a></th>
+          <th><a href="{{ sort_links.analyzed }}">分析日期</a></th>
+        </tr>
+      </thead>
       <tbody>
-        {% for report in reports %}
+        {% for metric in metrics %}
           <tr>
             <td>{{ forloop.counter }}</td>
-            <td>{{ report.company_name }}</td>
-            <td>{{ report.report_year }}</td>
-            <td>{% if report.industry_metric_display %}{{ report.industry_metric_display.industry.name_zh }}{% else %}{{ report.industry_category }}{% endif %}</td>
-            <td><a href="{% url 'reports:detail' report.pk %}">{{ report.title }}</a></td>
-            <td><span class="score-pill">{{ report.analysis_result.total_score }}</span></td>
-            <td>{% if report.industry_metric_display %}{{ report.industry_metric_display.percentile_rank }}{% else %}-{% endif %}</td>
-            <td>{% if report.industry_metric_display %}<span class="grade-pill grade-{{ report.industry_metric_display.grade|lower }}">{{ report.industry_metric_display.grade }}</span>{% else %}-{% endif %}</td>
-            <td><span class="status-pill">{{ report.status }}</span></td>
+            <td>{{ metric.report.company_name }}</td>
+            <td>{{ metric.report.report_year }}</td>
+            <td><a href="{% url 'dashboard:industry_detail' metric.industry.code %}">{{ metric.industry.code }} {{ metric.industry.name_zh }}</a></td>
+            <td><a href="{% url 'reports:detail' metric.report.pk %}">{{ metric.report.title }}</a></td>
+            <td><span class="score-pill">{{ metric.raw_score }}</span></td>
+            <td><span title="PR 表示超越同產業多少比例企業。">{{ metric.percentile_rank }}</span></td>
+            <td><span class="grade-pill grade-{{ metric.grade|lower }}">{{ metric.grade }}</span></td>
+            <td><span title="Z-score 表示高於或低於產業平均幾個標準差。">{{ metric.z_score }}</span></td>
+            <td>{{ metric.missing_count }}</td>
+            <td>{{ metric.disclosure_rate }}%</td>
+            <td>{{ metric.analysis_result.analyzed_at|date:"Y-m-d" }}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="9">尚無可排名的分析結果。</td></tr>
+          <tr><td colspan="12">尚無可排名的分析結果。</td></tr>
         {% endfor %}
       </tbody>
     </table>

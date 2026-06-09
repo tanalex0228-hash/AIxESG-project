@@ -991,6 +991,20 @@ form ul.errorlist {
   grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
 }
 
+.filter-row.wide {
+  grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
+}
+
+.filter-row.compact {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.range-pair {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+}
+
 .compare-picker label,
 .filter-row label {
   color: #202939;
@@ -1150,6 +1164,116 @@ form ul.errorlist {
   padding: 4px 7px;
 }
 
+.chart-grid,
+.leader-grid,
+.step-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chart-box.compact {
+  min-height: 250px;
+  padding: 14px;
+}
+
+.chart-box.wide,
+.step-card.wide {
+  grid-column: span 2;
+}
+
+.subsection-title {
+  font-size: .95rem;
+  font-weight: 760;
+  margin: 0 0 10px;
+}
+
+.leader-list {
+  background: rgba(245, 246, 248, .72);
+  border: 1px solid rgba(15, 23, 42, .07);
+  border-radius: 8px;
+  margin: 0;
+  padding: 12px 12px 12px 34px;
+}
+
+.leader-list li {
+  margin: 8px 0;
+  padding-right: 8px;
+}
+
+.leader-list span {
+  color: var(--muted);
+  float: right;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.step-card {
+  background: rgba(255, 255, 255, .78);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.step-card > span {
+  color: var(--subtle);
+  display: block;
+  font-size: .76rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.step-card h2 {
+  font-size: 1rem;
+  font-weight: 760;
+  margin: 0 0 12px;
+}
+
+.step-card label {
+  display: inline-flex;
+  gap: 7px;
+  margin: 0 16px 8px 0;
+}
+
+.candidate-list {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.candidate-row {
+  align-items: center;
+  background: rgba(245, 246, 248, .76);
+  border: 1px solid rgba(15, 23, 42, .07);
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.candidate-row span {
+  display: grid;
+  gap: 2px;
+}
+
+.candidate-row small,
+.muted-empty {
+  color: var(--muted);
+}
+
+.mini-tag {
+  background: rgba(15, 23, 42, .06);
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: .76rem;
+  font-weight: 700;
+  margin: 2px;
+  padding: 4px 8px;
+}
+
 
 @media (max-width: 991px) {
   .app-nav {
@@ -1190,6 +1314,19 @@ form ul.errorlist {
 
   .filter-row {
     grid-template-columns: 1fr;
+  }
+
+  .filter-row.wide,
+  .filter-row.compact,
+  .chart-grid,
+  .leader-grid,
+  .step-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-box.wide,
+  .step-card.wide {
+    grid-column: span 1;
   }
 
   .compare-actions {

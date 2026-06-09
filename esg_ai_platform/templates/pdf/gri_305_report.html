@@ -22,12 +22,21 @@
   <p>{{ analysis.summary }}</p>
   {% with feedback=analysis.raw_output.llm_management_feedback conclusion=analysis.raw_output.dynamic_conclusion benchmark=analysis.raw_output.benchmark_comparison %}
   <h2>管理層評價</h2>
-  <p>AIxESG Rating：{{ feedback.overall_rating|default:"-" }}；來源：{{ feedback.source|default:"rule_engine" }}</p>
-  <p>{{ feedback.executive_feedback|default:conclusion.executive_summary }}</p>
+  <p>AIxESG Rating：{{ feedback.overall_rating|default:"-" }}；來源：{{ feedback.source|default:"rule_engine" }}；Confidence：{{ feedback.confidence_level|default:"Low" }}；Benchmark Sample：{{ feedback.benchmark_sample|default:"0" }}</p>
+  <p>{{ feedback.executive_summary|default:feedback.executive_feedback|default:conclusion.executive_summary }}</p>
   <h2>同業標竿差距</h2>
-  <p>{{ benchmark.summary|default:"尚無標竿比較資料。" }}</p>
+  <p>{{ feedback.benchmark_commentary|default:benchmark.summary|default:"尚無標竿比較資料。" }}</p>
+  <h2>Industry Insight</h2>
+  <p>{{ feedback.industry_insight|default:"尚無足夠產業資料可形成洞察。" }}</p>
   <h2>改善優先序</h2>
   <ul>{% for item in feedback.improvement_advice %}<li>{{ item }}</li>{% empty %}<li>請補齊缺漏欄位與佐證來源。</li>{% endfor %}</ul>
+  <h2>Action Plan</h2>
+  <h3>短期</h3>
+  <ul>{% for item in feedback.action_plan.short_term %}<li>{{ item }}</li>{% empty %}<li>確認資料 owner 並補齊缺漏欄位。</li>{% endfor %}</ul>
+  <h3>中期</h3>
+  <ul>{% for item in feedback.action_plan.medium_term %}<li>{{ item }}</li>{% empty %}<li>重整揭露章節並建立定期覆核節奏。</li>{% endfor %}</ul>
+  <h3>長期</h3>
+  <ul>{% for item in feedback.action_plan.long_term %}<li>{{ item }}</li>{% empty %}<li>制度化排放數據治理與外部確信準備。</li>{% endfor %}</ul>
   <h2>Next 90 Days</h2>
   <ol>{% for item in feedback.next_90_days %}<li>{{ item }}</li>{% empty %}<li>建立欄位 owner 並完成缺漏補件。</li>{% endfor %}</ol>
   {% endwith %}

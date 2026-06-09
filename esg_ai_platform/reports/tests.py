@@ -301,9 +301,97 @@ class ReportUploadTests(TestCase):
         self.assertContains(dashboard, "半導體業")
         self.assertEqual(detail.status_code, 200)
         self.assertContains(detail, "Industry Insight")
+        self.assertContains(detail, "Distribution & Trend")
+        self.assertContains(detail, "industry-distribution-data")
+        self.assertContains(detail, "industry-trend-data")
         self.assertContains(detail, "台積電")
         self.assertContains(detail, "A")
+        code_detail = self.client.get("/industry/24/")
+        self.assertEqual(code_detail.status_code, 200)
         self.assertTrue(IndustryMetricSnapshot.objects.filter(report=first, percentile_rank__gt=50).exists())
+
+    def test_ranking_filters_sorts_and_links_to_industry(self):
+        industry, _ = IndustryCategory.objects.get_or_create(code="24", defaults={"name_zh": "半導體業", "name_en": "Semiconductors"})
+        other_industry, _ = IndustryCategory.objects.get_or_create(code="28", defaults={"name_zh": "電子零組件業", "name_en": "Electronic Components"})
+        tsmc = Report.objects.create(
+            organization=self.organization,
+            company_name="台積電",
+            report_year=2024,
+            title="TSMC Ranking",
+            status="completed",
+            industry_category_ref=industry,
+            industry_category=industry.name_zh,
+        )
+        umc = Report.objects.create(
+            organization=self.organization,
+            company_name="聯電",
+            report_year=2024,
+            title="UMC Ranking",
+            status="completed",
+            industry_category_ref=industry,
+            industry_category=industry.name_zh,
+        )
+        delta = Report.objects.create(
+            organization=self.organization,
+            company_name="台達電",
+            report_year=2024,
+            title="Delta Ranking",
+            status="completed",
+            industry_category_ref=other_industry,
+            industry_category=other_industry.name_zh,
+        )
+        AnalysisResult.objects.create(report=tsmc, total_score=95, confidence_score=80)
+        AnalysisResult.objects.create(report=umc, total_score=60, confidence_score=80)
+        AnalysisResult.objects.create(report=delta, total_score=85, confidence_score=80)
+        recalculate_industry_metrics(industry)
+        recalculate_industry_metrics(other_industry)
+        self.client.force_login(self.user)
+
+        response = self.client.get("/reports/ranking/?industry=24&pr_min=75&sort=raw&direction=asc")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Z-score")
+        self.assertContains(response, "/industry/24/")
+        self.assertContains(response, "台積電")
+        self.assertNotContains(response, "台達電")
+
+    def test_compare_options_json_and_industry_mode(self):
+        industry, _ = IndustryCategory.objects.get_or_create(code="24", defaults={"name_zh": "半導體業", "name_en": "Semiconductors"})
+        other_industry, _ = IndustryCategory.objects.get_or_create(code="28", defaults={"name_zh": "電子零組件業", "name_en": "Electronic Components"})
+        tsmc = Report.objects.create(
+            organization=self.organization,
+            company_name="台積電",
+            report_year=2024,
+            title="TSMC Compare",
+            status="completed",
+            industry_category_ref=industry,
+            industry_category=industry.name_zh,
+        )
+        delta = Report.objects.create(
+            organization=self.organization,
+            company_name="台達電",
+            report_year=2024,
+            title="Delta Compare",
+            status="completed",
+            industry_category_ref=other_industry,
+            industry_category=other_industry.name_zh,
+        )
+        AnalysisResult.objects.create(report=tsmc, total_score=95, confidence_score=80)
+        AnalysisResult.objects.create(report=delta, total_score=85, confidence_score=80)
+        recalculate_industry_metrics(industry)
+        recalculate_industry_metrics(other_industry)
+        self.client.force_login(self.user)
+
+        options = self.client.get("/reports/compare/options.json?mode=company&industry=24&company=台積")
+        industry_options = self.client.get("/reports/compare/options.json?mode=industry")
+        industry_page = self.client.get("/reports/compare/?mode=industry&industry_codes=24&industry_codes=28")
+
+        self.assertEqual(options.status_code, 200)
+        self.assertEqual(options.json()["reports"][0]["company"], "台積電")
+        self.assertEqual(industry_options.status_code, 200)
+        self.assertTrue(any(item["code"] == "24" for item in industry_options.json()["industries"]))
+        self.assertContains(industry_page, "產業比較")
+        self.assertContains(industry_page, "平均 Raw")
 
     def test_report_delete_removes_report_for_authorized_tenant_user(self):
         report = Report.objects.create(
