@@ -211,7 +211,7 @@ function initIntroStorytelling() {
   if (!root) return;
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const revealItems = root.querySelectorAll(".intro-reveal, .story-chip, .metric-tile, .data-bar");
+  const revealItems = root.querySelectorAll(".intro-reveal, .story-chip, .metric-tile, .intro-data-card, .process-card, .data-bar");
   const counters = root.querySelectorAll("[data-counter]");
   const parallaxItems = root.querySelectorAll("[data-parallax]");
   const setCounterValue = (element, value) => {
@@ -260,7 +260,7 @@ function initIntroStorytelling() {
   revealItems.forEach((item) => observer.observe(item));
   counters.forEach((counter) => observer.observe(counter));
 
-  if (parallaxItems.length) {
+  if (parallaxItems.length && window.matchMedia("(min-width: 768px)").matches) {
     let ticking = false;
     const updateParallax = () => {
       const center = window.innerHeight / 2;

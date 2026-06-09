@@ -23,14 +23,20 @@
       </div>
     </div>
     <div class="intro-hero-visual" data-parallax="0.08">
-      <img class="intro-portrait intro-portrait-hero" src="{% static 'img/founder-portrait.png' %}" alt="AIxESG project founder portrait">
+      <div class="intro-portrait-frame">
+        <img class="intro-portrait intro-portrait-hero" src="{% static 'img/founder-portrait.png' %}" alt="AIxESG project founder portrait">
+      </div>
       <div class="intro-data-card intro-data-card-a">
+        <span>Industry PR</span>
+        <strong data-counter="91">0</strong>
+      </div>
+      <div class="intro-data-card intro-data-card-b">
         <span>Disclosure Rate</span>
         <strong data-counter="82" data-suffix="%">0%</strong>
       </div>
-      <div class="intro-data-card intro-data-card-b">
-        <span>Industry PR</span>
-        <strong data-counter="91">0</strong>
+      <div class="intro-data-card intro-data-card-c">
+        <span>Benchmark Sample</span>
+        <strong data-counter="127">0</strong>
       </div>
     </div>
   </section>
@@ -76,6 +82,49 @@
       <article class="metric-tile">
         <span>Disclosure Rate</span>
         <strong data-counter="84" data-suffix="%">0%</strong>
+      </article>
+    </div>
+  </section>
+
+  <section class="intro-process intro-reveal">
+    <div class="intro-section-copy intro-center">
+      <div class="eyebrow">System Workflow</div>
+      <h2>
+        <span>從 PDF</span>
+        <span>到可比較的產業資料</span>
+      </h2>
+      <p>AIxESG 保留原始報告、解析文字、RAG 引用與規則引擎結果，讓每一個分數都能追溯到報告書段落。</p>
+    </div>
+    <div class="process-track">
+      <article class="process-card">
+        <span>01</span>
+        <strong>PDF Upload</strong>
+        <p>上傳永續報告並建立報告版本。</p>
+      </article>
+      <article class="process-card">
+        <span>02</span>
+        <strong>Parsing</strong>
+        <p>抽取頁面文字、年份、公司與章節內容。</p>
+      </article>
+      <article class="process-card">
+        <span>03</span>
+        <strong>Chunking</strong>
+        <p>切分段落，保留頁碼與引用來源。</p>
+      </article>
+      <article class="process-card">
+        <span>04</span>
+        <strong>RAG Retrieval</strong>
+        <p>依 GRI 305 指標搜尋最相關揭露段落。</p>
+      </article>
+      <article class="process-card">
+        <span>05</span>
+        <strong>Rule Engine</strong>
+        <p>計算 Raw Score、缺漏項目與揭露率。</p>
+      </article>
+      <article class="process-card">
+        <span>06</span>
+        <strong>Benchmark</strong>
+        <p>產業內計算 PR、Grade 與標竿差距。</p>
       </article>
     </div>
   </section>
@@ -134,8 +183,19 @@
       </h2>
       <p>AIxESG 起源於產學合作研究計畫。透過資料結構化與 AI 技術，讓永續資訊真正成為決策依據。</p>
     </div>
-    <div class="founder-photo-wrap" data-parallax="0.05">
-      <img class="intro-portrait" src="{% static 'img/founder-portrait.png' %}" alt="AIxESG founder portrait">
+    <div class="project-story-panel">
+      <div>
+        <span>Research</span>
+        <strong>GRI 305</strong>
+      </div>
+      <div>
+        <span>Database</span>
+        <strong>Industry Benchmark</strong>
+      </div>
+      <div>
+        <span>Platform</span>
+        <strong>Disclosure Intelligence</strong>
+      </div>
     </div>
   </section>
 
