@@ -1,5 +1,8 @@
+import csv
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Count, Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 
 from accounts.utils import get_user_organization, is_individual_user, is_system_admin_user
@@ -79,8 +82,14 @@ def industry_detail(request, industry_name):
         {
             "snapshots": snapshots,
             "filters": {"company": company, "year": year, "grade": grade, "sort": sort, "direction": direction},
+            "missing_export_url": _export_url(request, "missing_csv"),
+            "companies_export_url": _export_url(request, "companies_csv"),
         }
     )
+    if request.GET.get("export") == "missing_csv":
+        return _industry_missing_csv_response(industry, context["top_missing_items"])
+    if request.GET.get("export") == "companies_csv":
+        return _industry_companies_csv_response(industry, snapshots)
     return render(request, "dashboard/industry_detail.html", context)
 
 
@@ -123,3 +132,48 @@ def _round_metric(value):
     if value is None:
         return 0
     return int(round(float(value)))
+
+
+def _export_url(request, export_value):
+    params = request.GET.copy()
+    params["export"] = export_value
+    return f"?{params.urlencode()}"
+
+
+def _industry_missing_csv_response(industry, top_missing_items):
+    response = _csv_response(f"aixesg_{industry.code}_missing_items.csv")
+    writer = csv.writer(response)
+    writer.writerow(["排名", "產業代碼", "產業名稱", "缺漏項目", "缺漏次數", "缺漏比例"])
+    for index, item in enumerate(top_missing_items, start=1):
+        writer.writerow([index, industry.code, industry.name_zh, item["label"], item["count"], f"{item['ratio']}%"])
+    return response
+
+
+def _industry_companies_csv_response(industry, snapshots):
+    response = _csv_response(f"aixesg_{industry.code}_companies.csv")
+    writer = csv.writer(response)
+    writer.writerow(["公司", "年度", "產業代碼", "產業名稱", "Raw Score", "PR", "Grade", "Z-score", "缺漏數", "揭露完整度", "分析日期"])
+    for item in snapshots:
+        writer.writerow(
+            [
+                item.report.company_name,
+                item.report.report_year,
+                industry.code,
+                industry.name_zh,
+                item.raw_score,
+                item.percentile_rank,
+                item.grade,
+                item.z_score,
+                item.missing_count,
+                f"{item.disclosure_rate}%",
+                item.analysis_result.analyzed_at.strftime("%Y-%m-%d"),
+            ]
+        )
+    return response
+
+
+def _csv_response(filename):
+    response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response.write("\ufeff")
+    return response

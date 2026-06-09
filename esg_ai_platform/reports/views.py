@@ -467,6 +467,8 @@ def ranking_reports(request):
         metrics = metrics.order_by(order_field, "report__company_name")
     else:
         metrics = metrics.order_by(f"-{order_field}", "report__company_name")
+    if request.GET.get("export") == "csv":
+        return _ranking_csv_response(metrics)
     return render(
         request,
         "reports/ranking.html",
@@ -486,8 +488,42 @@ def ranking_reports(request):
                 "direction": direction,
             },
             "sort_links": _ranking_sort_links(request),
+            "export_url": _export_url(request, "csv"),
         },
     )
+
+
+def _ranking_csv_response(metrics):
+    response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
+    response["Content-Disposition"] = 'attachment; filename="aixesg_ranking.csv"'
+    response.write("\ufeff")
+    writer = csv.writer(response)
+    writer.writerow(["排名", "公司", "年度", "產業代碼", "產業名稱", "報告", "Raw Score", "PR", "Grade", "Z-score", "缺漏數", "揭露率", "分析日期"])
+    for index, metric in enumerate(metrics, start=1):
+        writer.writerow(
+            [
+                index,
+                metric.report.company_name,
+                metric.report.report_year,
+                metric.industry.code,
+                metric.industry.name_zh,
+                metric.report.title,
+                metric.raw_score,
+                metric.percentile_rank,
+                metric.grade,
+                metric.z_score,
+                metric.missing_count,
+                f"{metric.disclosure_rate}%",
+                metric.analysis_result.analyzed_at.strftime("%Y-%m-%d"),
+            ]
+        )
+    return response
+
+
+def _export_url(request, export_value):
+    params = request.GET.copy()
+    params["export"] = export_value
+    return f"?{params.urlencode()}"
 
 
 def _apply_decimal_range(queryset, field, minimum, maximum):

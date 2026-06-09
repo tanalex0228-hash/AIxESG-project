@@ -8,7 +8,7 @@ from django.test import TestCase, override_settings
 from django.utils.datastructures import MultiValueDict
 
 from accounts.models import Role, SystemAdminUserProfile, UserOrganizationRole, UserProfile
-from analysis.models import AnalysisResult, DisclosureScore, GeneratedReport, IndustryMetricSnapshot
+from analysis.models import AnalysisResult, DisclosureScore, GeneratedReport, IndustryMetricSnapshot, MissingItem
 from analysis.services.industry_metrics import recalculate_industry_metrics
 from gri.models import GRIRequiredField
 from organizations.models import Organization
@@ -290,11 +290,14 @@ class ReportUploadTests(TestCase):
         DisclosureScore.objects.create(analysis_result=first_result, disclosure_code="305-2", status="complete")
         DisclosureScore.objects.create(analysis_result=second_result, disclosure_code="305-1", status="partial")
         DisclosureScore.objects.create(analysis_result=second_result, disclosure_code="305-2", status="missing")
+        MissingItem.objects.create(analysis_result=second_result, disclosure_code="305-2", item_name="Location Based Scope 2")
         recalculate_industry_metrics(industry)
         self.client.force_login(self.user)
 
         dashboard = self.client.get("/")
         detail = self.client.get("/industry/半導體業/")
+        missing_csv = self.client.get("/industry/24/?export=missing_csv")
+        companies_csv = self.client.get("/industry/24/?export=companies_csv&sort=raw&direction=desc")
 
         self.assertEqual(dashboard.status_code, 200)
         self.assertContains(dashboard, "Industry Coverage")
@@ -309,6 +312,12 @@ class ReportUploadTests(TestCase):
         code_detail = self.client.get("/industry/24/")
         self.assertEqual(code_detail.status_code, 200)
         self.assertTrue(IndustryMetricSnapshot.objects.filter(report=first, percentile_rank__gt=50).exists())
+        self.assertIn("text/csv", missing_csv["Content-Type"])
+        self.assertContains(missing_csv, "缺漏項目")
+        self.assertContains(missing_csv, "305-2 Location Based Scope 2")
+        self.assertIn("text/csv", companies_csv["Content-Type"])
+        self.assertContains(companies_csv, "Raw Score")
+        self.assertContains(companies_csv, "台積電")
 
     def test_ranking_filters_sorts_and_links_to_industry(self):
         industry, _ = IndustryCategory.objects.get_or_create(code="24", defaults={"name_zh": "半導體業", "name_en": "Semiconductors"})
@@ -348,12 +357,17 @@ class ReportUploadTests(TestCase):
         self.client.force_login(self.user)
 
         response = self.client.get("/reports/ranking/?industry=24&pr_min=75&sort=raw&direction=asc")
+        csv_response = self.client.get("/reports/ranking/?industry=24&pr_min=75&sort=raw&direction=asc&export=csv")
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Z-score")
         self.assertContains(response, "/industry/24/")
         self.assertContains(response, "台積電")
         self.assertNotContains(response, "台達電")
+        self.assertIn("text/csv", csv_response["Content-Type"])
+        self.assertContains(csv_response, "公司")
+        self.assertContains(csv_response, "台積電")
+        self.assertNotContains(csv_response, "台達電")
 
     def test_compare_options_json_and_industry_mode(self):
         industry, _ = IndustryCategory.objects.get_or_create(code="24", defaults={"name_zh": "半導體業", "name_en": "Semiconductors"})
