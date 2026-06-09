@@ -260,7 +260,7 @@ function initIntroStorytelling() {
   revealItems.forEach((item) => observer.observe(item));
   counters.forEach((counter) => observer.observe(counter));
 
-  if (parallaxItems.length && window.matchMedia("(min-width: 768px)").matches) {
+  if (parallaxItems.length && window.matchMedia("(min-width: 1024px)").matches) {
     let ticking = false;
     const updateParallax = () => {
       const center = window.innerHeight / 2;
