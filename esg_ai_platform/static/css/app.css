@@ -873,7 +873,6 @@ form ul.errorlist {
 
 .intro-portrait-frame {
   bottom: 0;
-  filter: drop-shadow(0 42px 58px rgba(15, 23, 42, .2));
   position: absolute;
   right: 0;
   width: min(440px, 88%);

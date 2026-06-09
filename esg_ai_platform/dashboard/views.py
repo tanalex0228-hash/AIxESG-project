@@ -1,14 +1,15 @@
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404, render
 
 from accounts.utils import get_user_organization, is_individual_user, is_system_admin_user
+from analysis.models import IndustryMetricSnapshot
 from analysis.services.industry_metrics import industry_detail_context, industry_overview
 from reports.models import IndustryCategory, Report
 
 
 def intro(request):
-    return render(request, "dashboard/intro.html")
+    return render(request, "dashboard/intro.html", {"intro_metrics": _intro_metrics()})
 
 
 @login_required
@@ -102,3 +103,23 @@ def _average_card_value(cards, key):
 def _grade_sort_value(grade):
     order = {"A+": 5, "A": 4, "B": 3, "C": 2, "D": 1}
     return order.get(grade, 0)
+
+
+def _intro_metrics():
+    metrics = IndustryMetricSnapshot.objects.filter(report__status="completed")
+    aggregate = metrics.aggregate(
+        average_pr=Avg("percentile_rank"),
+        average_disclosure_rate=Avg("disclosure_rate"),
+        benchmark_sample=Count("report_id", distinct=True),
+    )
+    return {
+        "average_pr": _round_metric(aggregate["average_pr"]),
+        "average_disclosure_rate": _round_metric(aggregate["average_disclosure_rate"]),
+        "benchmark_sample": aggregate["benchmark_sample"] or 0,
+    }
+
+
+def _round_metric(value):
+    if value is None:
+        return 0
+    return int(round(float(value)))
