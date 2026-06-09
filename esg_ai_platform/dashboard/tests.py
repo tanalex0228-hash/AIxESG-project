@@ -7,5 +7,6 @@ class IntroPageTests(TestCase):
         response = self.client.get(reverse("dashboard:intro"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "ESG Disclosure Intelligence")
-        self.assertContains(response, "GRI 305 Score")
+        self.assertContains(response, "Carbon Disclosure Intelligence Platform")
+        self.assertContains(response, "讓永續報告")
+        self.assertContains(response, "founder-portrait.png")

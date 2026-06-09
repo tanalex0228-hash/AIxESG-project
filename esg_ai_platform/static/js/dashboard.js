@@ -206,6 +206,81 @@ function initCompareWorkbench() {
   loadOptions();
 }
 
+function initIntroStorytelling() {
+  const root = document.querySelector(".intro-story");
+  if (!root) return;
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const revealItems = root.querySelectorAll(".intro-reveal, .story-chip, .metric-tile, .data-bar");
+  const counters = root.querySelectorAll("[data-counter]");
+  const parallaxItems = root.querySelectorAll("[data-parallax]");
+  const setCounterValue = (element, value) => {
+    const suffix = element.dataset.suffix || "";
+    element.textContent = `${Math.round(value)}${suffix}`;
+  };
+  const animateCounter = (element) => {
+    if (element.dataset.counted === "true") return;
+    element.dataset.counted = "true";
+    const target = Number(element.dataset.counter || 0);
+    if (reducedMotion) {
+      setCounterValue(element, target);
+      return;
+    }
+    const start = performance.now();
+    const duration = 1100;
+    const step = (now) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCounterValue(element, target * eased);
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      }
+    };
+    window.requestAnimationFrame(step);
+  };
+
+  if (reducedMotion) {
+    revealItems.forEach((item) => item.classList.add("is-visible"));
+    counters.forEach(animateCounter);
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-visible");
+      if (entry.target.matches("[data-counter]")) {
+        animateCounter(entry.target);
+      }
+      entry.target.querySelectorAll("[data-counter]").forEach(animateCounter);
+      observer.unobserve(entry.target);
+    });
+  }, { rootMargin: "0px 0px -12% 0px", threshold: 0.16 });
+
+  revealItems.forEach((item) => observer.observe(item));
+  counters.forEach((counter) => observer.observe(counter));
+
+  if (parallaxItems.length) {
+    let ticking = false;
+    const updateParallax = () => {
+      const center = window.innerHeight / 2;
+      parallaxItems.forEach((item) => {
+        const rect = item.getBoundingClientRect();
+        const speed = Number(item.dataset.parallax || 0);
+        const offset = (rect.top + rect.height / 2 - center) * speed;
+        item.style.transform = `translateY(${Math.max(Math.min(offset, 28), -28)}px)`;
+      });
+      ticking = false;
+    };
+    window.addEventListener("scroll", () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(updateParallax);
+    }, { passive: true });
+    updateParallax();
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const scoreCanvas = document.getElementById("scoreChart");
   if (scoreCanvas && window.Chart) {
@@ -230,4 +305,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initComparisonTooltips();
   initIndustryCharts();
   initCompareWorkbench();
+  initIntroStorytelling();
 });

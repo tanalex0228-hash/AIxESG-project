@@ -1,89 +1,159 @@
 {% extends "base.html" %}
-{% block title %}AIxESG | ESG 報告評級與標竿分析平台{% endblock %}
+{% load static %}
+{% block title %}AIxESG | 企業碳揭露情報資料庫{% endblock %}
 {% block content %}
-<section class="product-hero">
-  <div class="product-hero-copy">
-    <div class="eyebrow">ESG Disclosure Intelligence</div>
-    <h1>把永續報告書變成可稽核、可比較、可行動的 ESG 決策資料。</h1>
-    <p>AIxESG 結合 PDF 解析、RAG 引用、GRI 305 規則引擎、同業標竿資料庫與 LLM 管理建議，協助企業找出碳揭露缺口並形成改善路線。</p>
+<div class="intro-story">
+  <section class="intro-hero intro-reveal">
+    <div class="intro-hero-copy">
+      <div class="eyebrow">Carbon Disclosure Intelligence Platform</div>
+      <h1 class="intro-hero-title">
+        <span>讓永續報告</span>
+        <span>從文件</span>
+        <span>變成決策資料</span>
+      </h1>
+      <p class="intro-lead">AIxESG 將 ESG 與 GRI 305 碳揭露資訊結構化，建立跨公司、跨產業、跨年度的比較基準，協助企業快速發現缺口、追蹤進步並制定改善策略。</p>
+      <div class="hero-actions">
+        {% if user.is_authenticated %}
+          <a class="btn btn-primary" href="{% url 'dashboard:index' %}">探索資料庫</a>
+          <a class="btn btn-outline-primary" href="{% url 'reports:upload' %}">上傳永續報告</a>
+        {% else %}
+          <a class="btn btn-primary" href="{% url 'login' %}">探索資料庫</a>
+          <a class="btn btn-outline-primary" href="{% url 'accounts:register' %}">上傳永續報告</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="intro-hero-visual" data-parallax="0.08">
+      <img class="intro-portrait intro-portrait-hero" src="{% static 'img/founder-portrait.png' %}" alt="AIxESG project founder portrait">
+      <div class="intro-data-card intro-data-card-a">
+        <span>Disclosure Rate</span>
+        <strong data-counter="82" data-suffix="%">0%</strong>
+      </div>
+      <div class="intro-data-card intro-data-card-b">
+        <span>Industry PR</span>
+        <strong data-counter="91">0</strong>
+      </div>
+    </div>
+  </section>
+
+  <section class="intro-chapter intro-reveal">
+    <div class="intro-sticky">
+      <div class="intro-section-copy">
+        <div class="eyebrow">Information Discovery</div>
+        <h2>每年都有數千頁永續報告被發布</h2>
+        <p>但真正有價值的資訊，往往藏在其中。</p>
+      </div>
+      <div class="intro-flow" aria-label="AIxESG information extraction flow">
+        <span class="story-chip">PDF</span>
+        <span class="story-chip">Scope 1</span>
+        <span class="story-chip">Scope 2</span>
+        <span class="story-chip">Scope 3</span>
+        <span class="story-chip">Carbon Offset</span>
+        <span class="story-chip">Reduction Results</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="intro-split intro-reveal">
+    <div>
+      <div class="eyebrow">Disclosure Intelligence</div>
+      <h2>我們不只讀報告</h2>
+      <h3>我們理解揭露品質</h3>
+      <p>依據 GRI 305 規範分析揭露完整度、缺漏項目與改善空間，讓每份報告都能轉化成可追蹤、可稽核、可比較的資料。</p>
+    </div>
+    <div class="intro-metrics-grid">
+      <article class="metric-tile">
+        <span>Raw Score</span>
+        <strong data-counter="86">0</strong>
+      </article>
+      <article class="metric-tile">
+        <span>PR</span>
+        <strong data-counter="78">0</strong>
+      </article>
+      <article class="metric-tile">
+        <span>Grade</span>
+        <strong>A</strong>
+      </article>
+      <article class="metric-tile">
+        <span>Disclosure Rate</span>
+        <strong data-counter="84" data-suffix="%">0%</strong>
+      </article>
+    </div>
+  </section>
+
+  <section class="intro-benchmark intro-reveal">
+    <div class="intro-section-copy intro-center">
+      <div class="eyebrow">Benchmark</div>
+      <h2>
+        <span>比較</span>
+        <span>才是真正的價值來源</span>
+      </h2>
+      <p>單一報告只能看見一家企業。資料庫才能看見整個產業。</p>
+    </div>
+    <div class="benchmark-visual" aria-hidden="true">
+      <div class="benchmark-row">
+        <span>Company</span>
+        <i class="data-bar data-bar-1"></i>
+      </div>
+      <div class="benchmark-row">
+        <span>Industry</span>
+        <i class="data-bar data-bar-2"></i>
+      </div>
+      <div class="benchmark-row">
+        <span>Year</span>
+        <i class="data-bar data-bar-3"></i>
+      </div>
+      <div class="benchmark-total">
+        <strong data-counter="127">0</strong>
+        <span>structured disclosure records</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="intro-split intro-reveal">
+    <div>
+      <div class="eyebrow">Industry Intelligence</div>
+      <h2>從報告</h2>
+      <h3>到產業情報</h3>
+      <p>AIxESG 不只是 ESG 分析工具，而是持續累積的碳揭露情報資料庫，讓企業、顧問與研究者看見揭露品質如何在產業中移動。</p>
+    </div>
+    <div class="intelligence-panel">
+      <div><span>Industry Ranking</span><strong>PR 90+</strong></div>
+      <div><span>Disclosure Rate</span><strong>84%</strong></div>
+      <div><span>Benchmark Gap</span><strong>Scope 3</strong></div>
+      <div><span>Missing Items</span><strong>305-5</strong></div>
+      <div><span>Industry Trend</span><strong>2022-2024</strong></div>
+    </div>
+  </section>
+
+  <section class="intro-founder intro-reveal">
+    <div class="founder-copy">
+      <div class="eyebrow">Project Story</div>
+      <h2>
+        <span>從學生專題開始</span>
+        <span>打造企業級 ESG Intelligence Platform</span>
+      </h2>
+      <p>AIxESG 起源於產學合作研究計畫。透過資料結構化與 AI 技術，讓永續資訊真正成為決策依據。</p>
+    </div>
+    <div class="founder-photo-wrap" data-parallax="0.05">
+      <img class="intro-portrait" src="{% static 'img/founder-portrait.png' %}" alt="AIxESG founder portrait">
+    </div>
+  </section>
+
+  <section class="intro-final intro-reveal">
+    <h2>
+      <span>未來的 ESG</span>
+      <span>不只是報告</span>
+      <span>而是資料。</span>
+    </h2>
     <div class="hero-actions">
       {% if user.is_authenticated %}
-        <a class="btn btn-primary" href="{% url 'dashboard:index' %}">進入總覽</a>
-        <a class="btn btn-outline-primary" href="{% url 'reports:upload' %}">上傳報告書</a>
+        <a class="btn btn-primary" href="{% url 'dashboard:index' %}">探索資料庫</a>
+        <a class="btn btn-outline-primary" href="{% url 'reports:upload' %}">立即開始分析</a>
       {% else %}
-        <a class="btn btn-primary" href="{% url 'login' %}">登入平台</a>
-        <a class="btn btn-outline-primary" href="{% url 'accounts:register' %}">建立帳號</a>
+        <a class="btn btn-primary" href="{% url 'login' %}">探索資料庫</a>
+        <a class="btn btn-outline-primary" href="{% url 'accounts:register' %}">立即開始分析</a>
       {% endif %}
     </div>
-  </div>
-  <div class="product-surface" aria-hidden="true">
-    <div class="surface-top">
-      <span></span><span></span><span></span>
-    </div>
-    <div class="surface-score">
-      <div>
-        <small>GRI 305 Score</small>
-        <strong>86</strong>
-      </div>
-      <div class="surface-ring">A</div>
-    </div>
-    <div class="surface-list">
-      <div><span>305-1</span><strong>Scope 1 完整</strong></div>
-      <div><span>305-3</span><strong>缺少 4 個 Scope 3 類別</strong></div>
-      <div><span>標竿</span><strong>低於上銀/研華揭露深度</strong></div>
-    </div>
-  </div>
-</section>
-
-<section class="value-grid">
-  <article>
-    <span>01</span>
-    <h2>PDF 自動解析</h2>
-    <p>企業上傳永續報告書後，系統會切分頁面、建立 chunks、產生 embeddings，保留後續引用與稽核證據。</p>
-  </article>
-  <article>
-    <span>02</span>
-    <h2>規則引擎評分</h2>
-    <p>GRI 305-1 到 305-5 分數由資料表權重計算，不讓模型自由猜分，方便稽核與版本控管。</p>
-  </article>
-  <article>
-    <span>03</span>
-    <h2>同業標竿比較</h2>
-    <p>系統把企業揭露與研華、東元、上銀等標竿資料比較，指出 Scope 3 類別與方法學差距。</p>
-  </article>
-  <article>
-    <span>04</span>
-    <h2>LLM 管理建議</h2>
-    <p>在規則引擎結果基礎上，LLM 綜整評價、風險、優先序與改善建議，形成可交付管理層的摘要。</p>
-  </article>
-</section>
-
-<section class="workflow-band">
-  <div>
-    <div class="eyebrow">Workflow</div>
-    <h2>從報告書到改善計畫，一條流程完成。</h2>
-  </div>
-  <ol class="workflow-steps">
-    <li>PDF 上傳</li>
-    <li>文字解析</li>
-    <li>RAG 檢索</li>
-    <li>GRI 規則比對</li>
-    <li>標竿差距</li>
-    <li>改善建議</li>
-  </ol>
-</section>
-
-<section class="role-band">
-  <div class="panel-header">
-    <div>
-      <h2 class="panel-title">角色與權限</h2>
-      <p class="panel-kicker">讓資料治理、企業上傳與公開檢視分流</p>
-    </div>
-  </div>
-  <div class="role-grid">
-    <div><strong>System Admin</strong><span>維護規則、公告、標竿資料與系統治理</span></div>
-    <div><strong>Enterprise User</strong><span>上傳企業報告、查看評分、取得改善建議</span></div>
-    <div><strong>Individual User</strong><span>瀏覽公開公司報告表現與分析結果</span></div>
-  </div>
-</section>
+  </section>
+</div>
 {% endblock %}
