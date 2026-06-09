@@ -4,8 +4,8 @@
 <div class="page-hero compact">
   <div>
     <div class="eyebrow">Ranking</div>
-    <h1 class="page-title small">ESG 企劃書排名比較</h1>
-    <p class="page-subtitle">依 AIxESG 總分排序，快速比較不同公司、不同年度的 ESG 報告表現。</p>
+    <h1 class="page-title small">ESG 報告排名比較</h1>
+    <p class="page-subtitle">以同產業 PR 與 Grade 排序，保留 Raw Score 讓使用者同時看見原始分數與相對表現。</p>
   </div>
   <div class="hero-actions">
     <a class="btn btn-outline-primary" href="{% url 'reports:compare' %}">缺漏矩陣</a>
@@ -33,25 +33,27 @@
   <div class="panel-header">
     <div>
       <h2 class="panel-title">排名表</h2>
-      <p class="panel-kicker">分數相同時依年度與公司名稱排序</p>
+      <p class="panel-kicker">Grade 由同產業 PR 決定，避免跨產業直接比較造成低估。</p>
     </div>
   </div>
   <div class="table-responsive table-shell">
     <table class="table">
-      <thead><tr><th>排名</th><th>公司</th><th>年度</th><th>報告</th><th>總分</th><th>信心</th><th>狀態</th></tr></thead>
+      <thead><tr><th>排名</th><th>公司</th><th>年度</th><th>產業</th><th>報告</th><th>Raw Score</th><th>PR</th><th>Grade</th><th>狀態</th></tr></thead>
       <tbody>
         {% for report in reports %}
           <tr>
             <td>{{ forloop.counter }}</td>
             <td>{{ report.company_name }}</td>
             <td>{{ report.report_year }}</td>
+            <td>{% if report.industry_metric_display %}{{ report.industry_metric_display.industry.name_zh }}{% else %}{{ report.industry_category }}{% endif %}</td>
             <td><a href="{% url 'reports:detail' report.pk %}">{{ report.title }}</a></td>
             <td><span class="score-pill">{{ report.analysis_result.total_score }}</span></td>
-            <td>{{ report.analysis_result.confidence_score }}</td>
+            <td>{% if report.industry_metric_display %}{{ report.industry_metric_display.percentile_rank }}{% else %}-{% endif %}</td>
+            <td>{% if report.industry_metric_display %}<span class="grade-pill grade-{{ report.industry_metric_display.grade|lower }}">{{ report.industry_metric_display.grade }}</span>{% else %}-{% endif %}</td>
             <td><span class="status-pill">{{ report.status }}</span></td>
           </tr>
         {% empty %}
-          <tr><td colspan="7">尚無可排名的分析結果。</td></tr>
+          <tr><td colspan="9">尚無可排名的分析結果。</td></tr>
         {% endfor %}
       </tbody>
     </table>

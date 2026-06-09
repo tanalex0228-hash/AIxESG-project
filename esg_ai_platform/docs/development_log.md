@@ -155,3 +155,10 @@
 - Tests: `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, and `manage.py test --noinput` passed with 22 tests; remote HTTPS smoke checks for static CSS, compare redirect, secure compare/ranking routes, and secure cookie settings passed.
 - Fixes: Prepared the app to run behind HTTPS or direct TLS Gunicorn without hard-coding production-only behavior into local development.
 - Notes: The current `financial-lab` account cannot modify system Nginx without sudo, so the immediate HTTPS deployment uses direct TLS on the AIxESG public port.
+
+### Module: Sprint 2A Industry Intelligence Dashboard
+
+- Completed: Added standard industry categories, company-code/name normalization, industry-relative PR, Grade thresholds, stored Z-score snapshots, Industry Intelligence Dashboard, Industry Detail pages, Industry Insight coverage metrics, ranking PR/Grade display, and permission-checked report deletion.
+- Tests: `makemigrations --check --dry-run`, `migrate`, `manage.py check`, `ruff check .`, `mypy .`, `collectstatic --noinput`, `manage.py test --noinput`, seed-data validation, and route smoke tests for dashboard, industry detail, ranking, and report list passed.
+- Fixes: Grade now comes from same-industry percentile rank instead of raw score, while raw score remains visible; Z-score is stored for future analysis but hidden from Sprint 2A frontend.
+- Notes: Sprint 2A intentionally keeps sorting to a single selected field and defers LLM commentary v2, Industry Benchmark, multi-sort, Z-score UI, and advanced filters to later sprint slices.

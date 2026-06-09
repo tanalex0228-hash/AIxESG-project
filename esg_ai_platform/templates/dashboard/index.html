@@ -1,146 +1,64 @@
 {% extends "base.html" %}
-{% block title %}Dashboard | AI ESG 智慧診斷{% endblock %}
+{% block title %}Industry Intelligence Dashboard{% endblock %}
 {% block content %}
-<div class="page-hero">
+<div class="page-hero compact">
   <div>
-    <div class="eyebrow">{{ organization.name|default:"AIxESG Workspace" }}</div>
-    <h1 class="page-title">ESG Intelligence Dashboard</h1>
-    <p class="page-subtitle">以 GRI 305 規則引擎、RAG 引用與同業標竿資料，追蹤企業碳揭露完整度與改善優先序。</p>
+    <div class="eyebrow">Industry Intelligence</div>
+    <h1 class="page-title small">全產業碳揭露情報總覽</h1>
+    <p class="page-subtitle">以標準產業分類彙整 GRI 305 Raw Score、同產業 PR、揭露率與常見缺口，快速判斷產業揭露成熟度。</p>
   </div>
   <div class="hero-actions">
-    <a class="btn btn-primary" href="{% url 'reports:upload' %}">上傳報告書</a>
-    <a class="btn btn-outline-primary" href="{% url 'reports:list' %}">查看紀錄</a>
-    <a class="btn btn-outline-primary" href="{% url 'reports:compare' %}">公司對比</a>
+    <a class="btn btn-primary" href="{% url 'reports:upload' %}">上傳報告</a>
+    <a class="btn btn-outline-primary" href="{% url 'reports:ranking' %}">排名比較</a>
   </div>
 </div>
 
 <div class="row g-3 mb-4">
-  <div class="col-md-3"><div class="metric success"><span>總分</span><strong>{{ latest_result.total_score|default:"-" }}</strong></div></div>
-  <div class="col-md-3"><div class="metric"><span>信心分數</span><strong>{{ latest_result.confidence_score|default:"-" }}</strong></div></div>
-  <div class="col-md-3"><div class="metric"><span>報告數</span><strong>{{ reports|length }}</strong></div></div>
-  <div class="col-md-3"><div class="metric warning"><span>最新狀態</span><strong>{{ latest_report.status|default:"-" }}</strong></div></div>
+  <div class="col-md-3"><div class="metric success"><span>樣本公司數</span><strong>{{ total_companies }}</strong></div></div>
+  <div class="col-md-3"><div class="metric"><span>樣本報告數</span><strong>{{ total_reports }}</strong></div></div>
+  <div class="col-md-3"><div class="metric"><span>平均 Raw Score</span><strong>{{ average_raw_score }}</strong></div></div>
+  <div class="col-md-3"><div class="metric warning"><span>平均揭露率</span><strong>{{ average_disclosure_rate }}%</strong></div></div>
 </div>
 
-{% if latest_result %}
-<div class="row g-3">
-  <div class="col-lg-7">
-    <section class="panel chart-box">
-      <div class="panel-header">
-        <div>
-          <h2 class="panel-title">分項分數</h2>
-          <p class="panel-kicker">GRI 305-1 至 305-5 規則引擎得分</p>
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">Industry Coverage</h2>
+      <p class="panel-kicker">樣本規模會影響產業比較的可信度；樣本越多，PR 與 Grade 越穩定。</p>
+    </div>
+  </div>
+  <div class="industry-grid">
+    {% for card in industry_cards %}
+      <a class="industry-card" href="{% url 'dashboard:industry_detail' card.industry.name_zh %}">
+        <div class="industry-card-head">
+          <div>
+            <span class="industry-code">{{ card.industry.code }}</span>
+            <h3>{{ card.industry.name_zh }}</h3>
+          </div>
+          <span class="confidence-pill {{ card.confidence_level|lower }}">{{ card.confidence_level }}</span>
         </div>
-      </div>
-      <canvas id="scoreChart" height="120"
-        data-labels="{% for score in latest_result.disclosure_scores.all %}{{ score.disclosure_code }}{% if not forloop.last %},{% endif %}{% endfor %}"
-        data-values="{% for score in latest_result.disclosure_scores.all %}{{ score.weighted_score }}{% if not forloop.last %},{% endif %}{% endfor %}"></canvas>
-    </section>
-  </div>
-  <div class="col-lg-5">
-    <section class="panel chart-box">
-      <div class="panel-header">
-        <div>
-          <h2 class="panel-title">權重分布</h2>
-          <p class="panel-kicker">總分 100 分的項目配置</p>
+        <div class="industry-card-metrics">
+          <div><span>公司</span><strong>{{ card.company_count }}</strong></div>
+          <div><span>報告</span><strong>{{ card.report_count }}</strong></div>
+          <div><span>Raw</span><strong>{{ card.average_raw_score }}</strong></div>
+          <div><span>揭露率</span><strong>{{ card.average_disclosure_rate }}%</strong></div>
         </div>
-      </div>
-      <canvas id="weightChart" height="120"
-        data-labels="{% for score in latest_result.disclosure_scores.all %}{{ score.disclosure_code }}{% if not forloop.last %},{% endif %}{% endfor %}"
-        data-values="{% for score in latest_result.disclosure_scores.all %}{{ score.weight_percent }}{% if not forloop.last %},{% endif %}{% endfor %}"></canvas>
-    </section>
-  </div>
-</div>
-
-<section class="panel mt-3">
-  <div class="panel-header">
-    <div>
-      <h2 class="panel-title">缺漏項目</h2>
-      <p class="panel-kicker">系統依 GRI 必填欄位扣分並生成補強建議</p>
-    </div>
-  </div>
-  <div class="table-responsive table-shell">
-    <table class="table align-middle">
-      <thead><tr><th>GRI</th><th>項目</th><th>嚴重度</th><th>說明</th></tr></thead>
-      <tbody>{% for item in latest_result.missing_items.all %}<tr><td>{{ item.disclosure_code }}</td><td>{{ item.item_name }}</td><td>{{ item.severity }}</td><td>{{ item.description }}</td></tr>{% empty %}<tr><td colspan="4">沒有缺漏項目。</td></tr>{% endfor %}</tbody>
-    </table>
+        <div class="industry-card-foot">
+          <span>平均 PR {{ card.average_pr }}</span>
+          <span>平均缺漏 {{ card.average_missing_count }}</span>
+        </div>
+        <div class="missing-summary">
+          <span>最常缺漏</span>
+          {% if card.most_common_missing_items %}
+            {% for item in card.most_common_missing_items %}
+              <em>{{ item.label }} ({{ item.count }})</em>
+            {% endfor %}
+          {% else %}
+            <em>尚無缺漏資料</em>
+          {% endif %}
+        </div>
+      </a>
+    {% endfor %}
   </div>
 </section>
-
-<section class="panel mt-3">
-  <div class="panel-header">
-    <div>
-      <h2 class="panel-title">引用來源</h2>
-      <p class="panel-kicker">每個判斷都保留頁碼、原文與信心分數</p>
-    </div>
-  </div>
-  <div class="table-responsive table-shell">
-    <table class="table align-middle">
-      <thead><tr><th>GRI 項目</th><th>頁碼</th><th>原文引用</th><th>系統判斷</th><th>信心</th><th>類型</th></tr></thead>
-      <tbody>{% for citation in latest_result.evidence_citations.all %}<tr><td>{{ citation.disclosure_code }}</td><td>{{ citation.page_number }}</td><td class="quote-cell">{{ citation.quoted_text }}</td><td>{{ citation.normalized_finding }}</td><td>{{ citation.confidence_score }}</td><td>{{ citation.evidence_type }}</td></tr>{% empty %}<tr><td colspan="6">尚無引用來源。</td></tr>{% endfor %}</tbody>
-    </table>
-  </div>
-</section>
-{% else %}
-<section class="panel"><div class="empty-state">尚無完成的分析結果。</div></section>
-{% endif %}
-
-<section class="panel mt-3">
-  <div class="panel-header">
-    <div>
-      <h2 class="panel-title">近期缺漏總表</h2>
-      <p class="panel-kicker">彙整最近報告的 GRI 305 缺漏欄位</p>
-    </div>
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:compare' %}">開啟對比矩陣</a>
-  </div>
-  <div class="table-responsive table-shell">
-    <table class="table">
-      <thead><tr><th>公司</th><th>年度</th><th>報告</th><th>GRI</th><th>缺漏欄位</th><th>嚴重度</th></tr></thead>
-      <tbody>{% for entry in recent_missing_items %}<tr><td>{{ entry.report.company_name }}</td><td>{{ entry.report.report_year }}</td><td><a href="{% url 'reports:detail' entry.report.pk %}">{{ entry.report.title }}</a></td><td>{{ entry.item.disclosure_code }}</td><td>{{ entry.item.item_name }}</td><td><span class="status-pill">{{ entry.item.severity }}</span></td></tr>{% empty %}<tr><td colspan="6">尚無缺漏資料。</td></tr>{% endfor %}</tbody>
-    </table>
-  </div>
-</section>
-
-<section class="panel mt-3">
-  <div class="panel-header">
-    <div>
-      <h2 class="panel-title">歷史分析紀錄</h2>
-      <p class="panel-kicker">所有上傳報告與分析狀態</p>
-    </div>
-  </div>
-  <div class="table-responsive table-shell">
-    <table class="table">
-      <thead><tr><th>公司</th><th>年度</th><th>標題</th><th>狀態</th><th>建立時間</th></tr></thead>
-      <tbody>{% for report in reports %}<tr><td>{{ report.company_name }}</td><td>{{ report.report_year }}</td><td><a href="{% url 'reports:detail' report.pk %}">{{ report.title }}</a></td><td><span class="badge text-bg-secondary">{{ report.status }}</span></td><td>{{ report.created_at }}</td></tr>{% empty %}<tr><td colspan="5">尚未上傳報告書。</td></tr>{% endfor %}</tbody>
-    </table>
-  </div>
-</section>
-
-{% if is_individual %}
-<section class="panel mt-3">
-  <div class="panel-header">
-    <div>
-      <h2 class="panel-title">公開公司報告表現</h2>
-      <p class="panel-kicker">個人使用者可查看公司 ESG 揭露表現</p>
-    </div>
-  </div>
-  <div class="table-responsive table-shell">
-    <table class="table">
-      <thead><tr><th>公司</th><th>年度</th><th>產業</th><th>總分</th><th>信心</th></tr></thead>
-      <tbody>
-        {% for report in public_reports %}
-          <tr>
-            <td>{{ report.company_name }}</td>
-            <td>{{ report.report_year }}</td>
-            <td>{{ report.industry_category }}</td>
-            <td>{{ report.analysis_result.total_score|default:"-" }}</td>
-            <td>{{ report.analysis_result.confidence_score|default:"-" }}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5">尚無公開完成報告。</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
-{% endif %}
 {% endblock %}

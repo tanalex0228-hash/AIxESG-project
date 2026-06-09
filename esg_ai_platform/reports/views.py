@@ -7,7 +7,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from accounts.utils import get_user_organization, is_individual_user, is_system_admin_user
-from analysis.models import GeneratedReport
+from analysis.models import GeneratedReport, IndustryMetricSnapshot
+from analysis.services.industry_metrics import recalculate_industry_metrics
 from gri.models import GRIRequiredField
 from organizations.models import Organization
 
@@ -36,6 +37,10 @@ def _reanalyzable_reports(user):
     if not organization:
         return Report.objects.none()
     return Report.objects.filter(organization=organization)
+
+
+def _deletable_reports(user):
+    return _reanalyzable_reports(user)
 
 
 def _field_meaning(field):
@@ -126,8 +131,34 @@ def report_list(request):
         {
             "reports": reports,
             "filters": {"company": company, "year": year, "status": status},
+            "can_delete_reports": _deletable_reports(request.user).exists(),
         },
     )
+
+
+@login_required
+def delete_report(request, pk):
+    if request.method != "POST":
+        return redirect("reports:list")
+    report = get_object_or_404(_deletable_reports(request.user), pk=pk)
+    industry = report.industry_category_ref
+    _delete_report_files(report)
+    title = str(report)
+    report.delete()
+    if industry:
+        recalculate_industry_metrics(industry)
+    messages.success(request, f"已刪除 {title}。")
+    return redirect("reports:list")
+
+
+def _delete_report_files(report):
+    file_record = getattr(report, "file_record", None)
+    if file_record and file_record.pdf_file:
+        file_record.pdf_file.delete(save=False)
+    generated_reports = GeneratedReport.objects.filter(analysis_result__report=report)
+    for generated in generated_reports:
+        if generated.file:
+            generated.file.delete(save=False)
 
 
 @login_required
@@ -324,4 +355,14 @@ def ranking_reports(request):
         reports = reports.filter(company_name__icontains=company)
     if year.isdigit():
         reports = reports.filter(report_year=int(year))
-    return render(request, "reports/ranking.html", {"reports": reports[:100], "filters": {"company": company, "year": year}})
+    recalculate_industry_metrics()
+    report_ids = list(reports.values_list("id", flat=True)[:100])
+    metrics = {
+        metric.report_id: metric
+        for metric in IndustryMetricSnapshot.objects.filter(report_id__in=report_ids).select_related("industry")
+    }
+    ranked_reports = list(reports[:100])
+    ranked_reports.sort(key=lambda report: (metrics.get(report.id).percentile_rank if metrics.get(report.id) else 0, report.latest_analysis_result.total_score), reverse=True)
+    for report in ranked_reports:
+        report.industry_metric_display = metrics.get(report.id)
+    return render(request, "reports/ranking.html", {"reports": ranked_reports, "filters": {"company": company, "year": year}})

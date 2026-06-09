@@ -18,6 +18,20 @@ REPORT_STATUS_CHOICES = [
 ]
 
 
+class IndustryCategory(models.Model):
+    code = models.CharField(max_length=20, unique=True)
+    name_zh = models.CharField(max_length=120)
+    name_en = models.CharField(max_length=120, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["code"]
+        verbose_name_plural = "industry categories"
+
+    def __str__(self):
+        return f"{self.code} {self.name_zh}"
+
+
 def validate_pdf(file):
     if not file.name.lower().endswith(".pdf"):
         raise ValidationError("Only PDF files are allowed.")
@@ -29,10 +43,18 @@ def validate_pdf(file):
 class Report(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="reports")
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    company_code = models.CharField(max_length=20, blank=True, db_index=True)
     company_name = models.CharField(max_length=255)
     report_year = models.PositiveIntegerField()
     title = models.CharField(max_length=255)
     industry_category = models.CharField(max_length=120, blank=True)
+    industry_category_ref = models.ForeignKey(
+        IndustryCategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reports",
+    )
     notes = models.TextField(blank=True)
     status = models.CharField(max_length=40, choices=REPORT_STATUS_CHOICES, default="uploaded", db_index=True)
     latest_analysis_job = models.ForeignKey(

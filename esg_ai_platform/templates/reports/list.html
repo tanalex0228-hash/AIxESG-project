@@ -47,7 +47,30 @@
   <div class="table-responsive table-shell">
     <table class="table">
       <thead><tr><th>公司</th><th>年度</th><th>標題</th><th>狀態</th><th>進度</th><th>操作</th></tr></thead>
-      <tbody>{% for report in reports %}<tr><td>{{ report.company_name }}</td><td>{{ report.report_year }}</td><td><a href="{% url 'reports:detail' report.pk %}">{{ report.title }}</a></td><td><span class="status-pill">{{ report.status }}</span></td><td>{{ report.analysis_job.progress|default:0 }}%</td><td><a class="btn btn-outline-primary btn-sm" href="{% url 'reports:status' report.pk %}">進度</a></td></tr>{% empty %}<tr><td colspan="6">尚未上傳報告書。</td></tr>{% endfor %}</tbody>
+      <tbody>
+        {% for report in reports %}
+          <tr>
+            <td>{{ report.company_name }}</td>
+            <td>{{ report.report_year }}</td>
+            <td><a href="{% url 'reports:detail' report.pk %}">{{ report.title }}</a></td>
+            <td><span class="status-pill">{{ report.status }}</span></td>
+            <td>{{ report.analysis_job.progress|default:0 }}%</td>
+            <td>
+              <div class="table-actions">
+                <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:status' report.pk %}">進度</a>
+                {% if can_delete_reports %}
+                  <form method="post" action="{% url 'reports:delete' report.pk %}" onsubmit="return confirm('確定刪除這份報告與相關分析紀錄？');">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-danger btn-sm" type="submit">刪除</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">尚未上傳報告書。</td></tr>
+        {% endfor %}
+      </tbody>
     </table>
   </div>
 </section>

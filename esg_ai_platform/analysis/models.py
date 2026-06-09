@@ -1,6 +1,6 @@
 from django.db import models
 
-from reports.models import AnalysisJob, Report, ReportChunk
+from reports.models import AnalysisJob, IndustryCategory, Report, ReportChunk
 
 
 class AnalysisResult(models.Model):
@@ -122,6 +122,46 @@ class GeneratedReport(models.Model):
 
     def __str__(self):
         return str(self.file)
+
+
+class GradeThreshold(models.Model):
+    grade = models.CharField(max_length=5, unique=True)
+    min_percentile_rank = models.DecimalField(max_digits=5, decimal_places=2)
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-min_percentile_rank", "sort_order"]
+
+    def __str__(self):
+        return f"{self.grade} >= {self.min_percentile_rank}"
+
+
+class IndustryMetricSnapshot(models.Model):
+    report = models.OneToOneField(Report, on_delete=models.CASCADE, related_name="industry_metric")
+    analysis_result = models.OneToOneField(AnalysisResult, on_delete=models.CASCADE, related_name="industry_metric")
+    industry = models.ForeignKey(IndustryCategory, on_delete=models.CASCADE, related_name="metric_snapshots")
+    raw_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    percentile_rank = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    z_score = models.DecimalField(max_digits=7, decimal_places=3, default=0)
+    grade = models.CharField(max_length=5, default="D", db_index=True)
+    disclosure_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    missing_count = models.PositiveIntegerField(default=0)
+    recommendation_count = models.PositiveIntegerField(default=0)
+    benchmark_sample_size = models.PositiveIntegerField(default=0)
+    calculated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["industry__code", "-percentile_rank", "-raw_score"]
+        indexes = [
+            models.Index(fields=["industry", "-percentile_rank"]),
+            models.Index(fields=["grade"]),
+            models.Index(fields=["calculated_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.report} {self.grade} PR {self.percentile_rank}"
 
 
 class AIUsageLog(models.Model):

@@ -2,6 +2,7 @@ from django import forms
 from django.utils.text import get_valid_filename
 
 from .models import Report, ReportFile, validate_pdf
+from .services.industry_classification import normalize_report_industry
 
 
 class ReportUploadForm(forms.ModelForm):
@@ -9,8 +10,9 @@ class ReportUploadForm(forms.ModelForm):
 
     class Meta:
         model = Report
-        fields = ["company_name", "report_year", "title", "industry_category", "notes"]
+        fields = ["company_code", "company_name", "report_year", "title", "industry_category", "notes"]
         labels = {
+            "company_code": "公司代號",
             "company_name": "公司名稱",
             "report_year": "報告年度",
             "title": "報告書標題",
@@ -31,6 +33,7 @@ class ReportUploadForm(forms.ModelForm):
         report = self.save(commit=False)
         report.organization = organization
         report.uploaded_by = user
+        normalize_report_industry(report, save=False)
         report.save()
         ReportFile.objects.create(
             report=report,

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ industry.name_zh }} Industry Detail{% endblock %}
+{% block content %}
+<div class="page-hero compact">
+  <div>
+    <div class="eyebrow">Industry Detail</div>
+    <h1 class="page-title small">{{ industry.code }} {{ industry.name_zh }}</h1>
+    <p class="page-subtitle">同產業 Raw Score、PR、Grade 與揭露完整度比較。Z-score 已計算保存，但本頁先不顯示。</p>
+  </div>
+  <div class="hero-actions">
+    <a class="btn btn-outline-primary" href="{% url 'dashboard:index' %}">回總覽</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="metric success"><span>樣本公司數</span><strong>{{ company_count }}</strong></div></div>
+  <div class="col-md-3"><div class="metric"><span>樣本報告數</span><strong>{{ report_count }}</strong></div></div>
+  <div class="col-md-3"><div class="metric"><span>平均 Raw Score</span><strong>{{ average_raw_score }}</strong></div></div>
+  <div class="col-md-3"><div class="metric warning"><span>Confidence</span><strong>{{ confidence_level }}</strong></div></div>
+</div>
+
+<section class="panel mb-3">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">Industry Insight</h2>
+      <p class="panel-kicker">依目前資料庫內同產業企業自動彙整，不足樣本時請保守解讀。</p>
+    </div>
+  </div>
+  <div class="insight-grid">
+    <div class="insight-item"><span>Scope 1 揭露率</span><strong>{{ scope_disclosure.scope_1 }}%</strong></div>
+    <div class="insight-item"><span>Scope 2 揭露率</span><strong>{{ scope_disclosure.scope_2 }}%</strong></div>
+    <div class="insight-item"><span>Scope 3 揭露率</span><strong>{{ scope_disclosure.scope_3 }}%</strong></div>
+    <div class="insight-item"><span>減排成果揭露率</span><strong>{{ scope_disclosure.reduction }}%</strong></div>
+  </div>
+  <div class="missing-summary expanded">
+    <span>最常缺漏項目</span>
+    {% for item in most_common_missing_items %}
+      <em>{{ item.label }} ({{ item.count }})</em>
+    {% empty %}
+      <em>尚無缺漏資料</em>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel mb-3">
+  <form class="filter-row" method="get">
+    <div>
+      <label for="company">公司</label>
+      <input id="company" name="company" value="{{ filters.company }}" placeholder="輸入公司名稱">
+    </div>
+    <div>
+      <label for="year">年度</label>
+      <input id="year" name="year" value="{{ filters.year }}" placeholder="例如 2024">
+    </div>
+    <div>
+      <label for="grade">Grade</label>
+      <select id="grade" name="grade">
+        <option value="">全部</option>
+        <option value="A+" {% if filters.grade == "A+" %}selected{% endif %}>A+</option>
+        <option value="A" {% if filters.grade == "A" %}selected{% endif %}>A</option>
+        <option value="B" {% if filters.grade == "B" %}selected{% endif %}>B</option>
+        <option value="C" {% if filters.grade == "C" %}selected{% endif %}>C</option>
+        <option value="D" {% if filters.grade == "D" %}selected{% endif %}>D</option>
+      </select>
+    </div>
+    <div>
+      <label for="sort">排序</label>
+      <select id="sort" name="sort">
+        <option value="pr" {% if filters.sort == "pr" %}selected{% endif %}>PR</option>
+        <option value="raw" {% if filters.sort == "raw" %}selected{% endif %}>Raw Score</option>
+        <option value="grade" {% if filters.sort == "grade" %}selected{% endif %}>Grade</option>
+        <option value="year" {% if filters.sort == "year" %}selected{% endif %}>年度</option>
+        <option value="company" {% if filters.sort == "company" %}selected{% endif %}>公司名稱</option>
+        <option value="analyzed" {% if filters.sort == "analyzed" %}selected{% endif %}>分析日期</option>
+      </select>
+    </div>
+    <div>
+      <label for="direction">方向</label>
+      <select id="direction" name="direction">
+        <option value="desc" {% if filters.direction == "desc" %}selected{% endif %}>Descending</option>
+        <option value="asc" {% if filters.direction == "asc" %}selected{% endif %}>Ascending</option>
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button class="btn btn-primary" type="submit">套用</button>
+      <a class="btn btn-outline-primary" href="{% url 'dashboard:industry_detail' industry.name_zh %}">清除</a>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">產業公司列表</h2>
+      <p class="panel-kicker">Grade 由同產業 PR 決定，Raw Score 保留原始規則引擎分數。</p>
+    </div>
+  </div>
+  <div class="table-responsive table-shell">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>公司</th>
+          <th>年度</th>
+          <th>Raw Score</th>
+          <th>PR</th>
+          <th>Grade</th>
+          <th>缺漏數</th>
+          <th>揭露完整度</th>
+          <th>分析日期</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in snapshots %}
+          <tr>
+            <td><a href="{% url 'reports:detail' item.report.pk %}">{{ item.report.company_name }}</a></td>
+            <td>{{ item.report.report_year }}</td>
+            <td><span class="score-pill">{{ item.raw_score }}</span></td>
+            <td>{{ item.percentile_rank }}</td>
+            <td><span class="grade-pill grade-{{ item.grade|lower }}">{{ item.grade }}</span></td>
+            <td>{{ item.missing_count }}</td>
+            <td>{{ item.disclosure_rate }}%</td>
+            <td>{{ item.analysis_result.analyzed_at|date:"Y-m-d" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="8">此產業目前沒有可比較的分析報告。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

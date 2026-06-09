@@ -14,6 +14,7 @@ from benchmarks.models import BenchmarkGoldStandard, BenchmarkGri305
 from gri.models import GRIRequiredField, GRIScoringWeight
 
 from .gri_knowledge import CATEGORY_KEYWORDS, SCOPE3_CATEGORIES
+from .industry_metrics import recalculate_report_industry_metrics
 from .knowledge_base_importer import seed_gri_rule_tables
 from .llm_feedback import build_management_feedback
 
@@ -347,4 +348,5 @@ def run_rule_engine_analysis(report, analysis_job=None):
     result.save(update_fields=["raw_output", "updated_at"])
     report.latest_analysis_result = result
     report.save(update_fields=["latest_analysis_result", "updated_at"])
+    recalculate_report_industry_metrics(report)
     return result

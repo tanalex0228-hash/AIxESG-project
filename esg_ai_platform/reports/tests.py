@@ -8,11 +8,12 @@ from django.test import TestCase, override_settings
 from django.utils.datastructures import MultiValueDict
 
 from accounts.models import Role, SystemAdminUserProfile, UserOrganizationRole, UserProfile
-from analysis.models import AnalysisResult, DisclosureScore, GeneratedReport
+from analysis.models import AnalysisResult, DisclosureScore, GeneratedReport, IndustryMetricSnapshot
+from analysis.services.industry_metrics import recalculate_industry_metrics
 from gri.models import GRIRequiredField
 from organizations.models import Organization
 from reports.forms import ReportUploadForm
-from reports.models import AnalysisJob, Report, ReportChunk, ReportFile
+from reports.models import AnalysisJob, IndustryCategory, Report, ReportChunk, ReportFile
 
 
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
@@ -231,12 +232,15 @@ class ReportUploadTests(TestCase):
         self.assertEqual(generated.status_code, 200)
 
     def test_ranking_page_orders_by_score(self):
+        industry, _ = IndustryCategory.objects.get_or_create(code="24", defaults={"name_zh": "半導體業", "name_en": "Semiconductors"})
         low = Report.objects.create(
             organization=self.organization,
             company_name="Low Co",
             report_year=2024,
             title="Low",
             status="completed",
+            industry_category_ref=industry,
+            industry_category=industry.name_zh,
         )
         high = Report.objects.create(
             organization=self.organization,
@@ -244,9 +248,12 @@ class ReportUploadTests(TestCase):
             report_year=2024,
             title="High",
             status="completed",
+            industry_category_ref=industry,
+            industry_category=industry.name_zh,
         )
         AnalysisResult.objects.create(report=low, total_score=55, confidence_score=80)
         AnalysisResult.objects.create(report=high, total_score=88, confidence_score=80)
+        recalculate_industry_metrics(industry)
         self.client.force_login(self.user)
 
         response = self.client.get("/reports/ranking/")
@@ -254,6 +261,88 @@ class ReportUploadTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "High Co")
         self.assertContains(response, "Low Co")
+        self.assertContains(response, "PR")
+        self.assertContains(response, "Grade")
+
+    def test_industry_dashboard_and_detail_show_pr_grade_and_insight(self):
+        industry, _ = IndustryCategory.objects.get_or_create(code="24", defaults={"name_zh": "半導體業", "name_en": "Semiconductors"})
+        first = Report.objects.create(
+            organization=self.organization,
+            company_name="台積電",
+            report_year=2025,
+            title="TSMC",
+            status="completed",
+            industry_category_ref=industry,
+            industry_category=industry.name_zh,
+        )
+        second = Report.objects.create(
+            organization=self.organization,
+            company_name="聯電",
+            report_year=2025,
+            title="UMC",
+            status="completed",
+            industry_category_ref=industry,
+            industry_category=industry.name_zh,
+        )
+        first_result = AnalysisResult.objects.create(report=first, total_score=90, confidence_score=80)
+        second_result = AnalysisResult.objects.create(report=second, total_score=60, confidence_score=80)
+        DisclosureScore.objects.create(analysis_result=first_result, disclosure_code="305-1", status="complete")
+        DisclosureScore.objects.create(analysis_result=first_result, disclosure_code="305-2", status="complete")
+        DisclosureScore.objects.create(analysis_result=second_result, disclosure_code="305-1", status="partial")
+        DisclosureScore.objects.create(analysis_result=second_result, disclosure_code="305-2", status="missing")
+        recalculate_industry_metrics(industry)
+        self.client.force_login(self.user)
+
+        dashboard = self.client.get("/")
+        detail = self.client.get("/industry/半導體業/")
+
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertContains(dashboard, "Industry Coverage")
+        self.assertContains(dashboard, "半導體業")
+        self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, "Industry Insight")
+        self.assertContains(detail, "台積電")
+        self.assertContains(detail, "A")
+        self.assertTrue(IndustryMetricSnapshot.objects.filter(report=first, percentile_rank__gt=50).exists())
+
+    def test_report_delete_removes_report_for_authorized_tenant_user(self):
+        report = Report.objects.create(
+            organization=self.organization,
+            company_name="Tenant A",
+            report_year=2025,
+            title="Delete Me",
+            status="completed",
+        )
+        ReportFile.objects.create(
+            report=report,
+            pdf_file=SimpleUploadedFile("delete-me.pdf", b"%PDF-1.4\n%%EOF", content_type="application/pdf"),
+            original_filename="delete-me.pdf",
+            file_size=14,
+        )
+        AnalysisResult.objects.create(report=report, total_score=70, confidence_score=80)
+        self.client.force_login(self.user)
+
+        response = self.client.post(f"/reports/{report.pk}/delete/")
+
+        self.assertRedirects(response, "/reports/")
+        self.assertFalse(Report.objects.filter(pk=report.pk).exists())
+
+    def test_individual_user_cannot_delete_public_report(self):
+        report = Report.objects.create(
+            organization=self.organization,
+            company_name="Tenant A",
+            report_year=2025,
+            title="Public Delete Blocked",
+            status="completed",
+        )
+        individual = get_user_model().objects.create_user(username="public-delete", password="pass")
+        UserProfile.objects.create(user=individual, account_type=UserProfile.ACCOUNT_INDIVIDUAL, legal_name="Reader")
+        self.client.force_login(individual)
+
+        response = self.client.post(f"/reports/{report.pk}/delete/")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(Report.objects.filter(pk=report.pk).exists())
 
     def test_reanalyze_creates_new_job_and_redirects_to_status(self):
         report = Report.objects.create(
