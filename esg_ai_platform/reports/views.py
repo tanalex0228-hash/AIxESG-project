@@ -72,7 +72,7 @@ def _comparison_rows(reports):
                 for field_result in disclosure_score.agent_output.get("field_results", []):
                     field_key = field_result.get("field_key", "")
                     field_label = field_result.get("field_label", "")
-                    row_key = (disclosure_score.disclosure_code, field_key or field_label)
+                    row_key = _comparison_row_key(disclosure_score.disclosure_code, field_label or field_key)
                     if row_key not in comparison_fields:
                         comparison_fields[row_key] = _comparison_field_definition(disclosure_score.disclosure_code, field_key, field_label)
                     if field_key:
@@ -80,7 +80,7 @@ def _comparison_rows(reports):
                     if field_label:
                         field_map[(disclosure_score.disclosure_code, field_label)] = field_result
             for missing_item in result.missing_items.all():
-                row_key = (missing_item.disclosure_code, missing_item.item_name)
+                row_key = _comparison_row_key(missing_item.disclosure_code, missing_item.item_name)
                 if row_key not in comparison_fields:
                     comparison_fields[row_key] = _comparison_field_definition(missing_item.disclosure_code, "", missing_item.item_name)
         field_results_by_report[report.id] = field_map
@@ -145,6 +145,11 @@ def _comparison_field_definition(disclosure_code, field_key, field_label):
         field_label=field_label or field_key,
         recommendation_template="",
     )
+
+
+def _comparison_row_key(disclosure_code, label):
+    normalized = " ".join(str(label or "").split()).strip().lower()
+    return disclosure_code, normalized
 
 
 def _comparison_field_result(field_map, field):

@@ -257,6 +257,42 @@ class ReportUploadTests(TestCase):
         self.assertIn("基準年,missing", content)
         self.assertNotIn("S1-1 新版 Excel 欄位", content)
 
+    def test_compare_deduplicates_field_results_and_missing_items(self):
+        report = Report.objects.create(
+            organization=self.organization,
+            company_name="Tenant A",
+            report_year=2025,
+            title="Duplicate Compare Report",
+            status="completed",
+        )
+        result = AnalysisResult.objects.create(report=report, total_score=70, confidence_score=80)
+        DisclosureScore.objects.create(
+            analysis_result=result,
+            disclosure_code="305-2",
+            status="partial",
+            agent_output={
+                "field_results": [
+                    {
+                        "field_key": "Location_Based",
+                        "field_label": "Location Based",
+                        "status": "missing",
+                    }
+                ]
+            },
+        )
+        MissingItem.objects.create(
+            analysis_result=result,
+            disclosure_code="305-2",
+            item_name="Location Based",
+            severity="high",
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(f"/reports/compare/?report_ids={report.id}&export=csv")
+        content = response.content.decode("utf-8-sig")
+
+        self.assertEqual(content.count("305-2,Location Based,missing"), 1)
+
     def test_download_original_and_generated_reports(self):
         report = Report.objects.create(
             organization=self.organization,
