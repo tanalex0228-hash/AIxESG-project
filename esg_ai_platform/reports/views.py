@@ -69,34 +69,25 @@ def _comparison_rows(reports):
         if result:
             for disclosure_score in result.disclosure_scores.all():
                 for field_result in disclosure_score.agent_output.get("field_results", []):
-                    field_map[(disclosure_score.disclosure_code, field_result.get("field_label", ""))] = field_result
+                    field_key = field_result.get("field_key", "")
+                    field_label = field_result.get("field_label", "")
+                    if field_key:
+                        field_map[(disclosure_score.disclosure_code, field_key)] = field_result
+                    if field_label:
+                        field_map[(disclosure_score.disclosure_code, field_label)] = field_result
         field_results_by_report[report.id] = field_map
     rows = []
     tooltip_payloads = {}
     for field in required_fields:
         label = field.field_label
-        key = (field.disclosure_code, label)
-        disclosures = []
-        for report in reports:
-            is_missing = key in report_missing.get(report.id, set())
-            if not is_missing:
-                disclosures.append(f"{report.company_name} {report.report_year}")
         cells = []
         for report in reports:
-            status = "missing" if key in report_missing.get(report.id, set()) else "complete"
-            field_result = field_results_by_report.get(report.id, {}).get(key, {})
+            field_result = field_results_by_report.get(report.id, {}).get(
+                (field.disclosure_code, field.field_key),
+                field_results_by_report.get(report.id, {}).get((field.disclosure_code, label), {}),
+            )
+            status = _comparison_cell_status(report, field, field_result, report_missing.get(report.id, set()))
             tooltip_key = f"{field.disclosure_code}-{field.field_key}-{report.id}"
-            tooltip_payloads[tooltip_key] = {
-                "company": report.company_name,
-                "year": report.report_year,
-                "status": status,
-                "disclosure_code": field.disclosure_code,
-                "field_label": label,
-                "page_number": field_result.get("page_number"),
-                "evidence_excerpt": field_result.get("evidence_excerpt", ""),
-                "meaning": _field_meaning(field),
-                "disclosed_companies": disclosures,
-            }
             cells.append(
                 {
                     "report": report,
@@ -105,6 +96,20 @@ def _comparison_rows(reports):
                     "tooltip_key": tooltip_key,
                 }
             )
+        disclosures = [f"{cell['report'].company_name} {cell['report'].report_year}" for cell in cells if cell["status"] == "complete"]
+        for cell in cells:
+            field_result = cell["field_result"]
+            tooltip_payloads[cell["tooltip_key"]] = {
+                "company": cell["report"].company_name,
+                "year": cell["report"].report_year,
+                "status": cell["status"],
+                "disclosure_code": field.disclosure_code,
+                "field_label": label,
+                "page_number": field_result.get("page_number"),
+                "evidence_excerpt": field_result.get("evidence_excerpt", ""),
+                "meaning": _field_meaning(field),
+                "disclosed_companies": disclosures,
+            }
         rows.append(
             {
                 "disclosure_code": field.disclosure_code,
@@ -113,6 +118,16 @@ def _comparison_rows(reports):
             }
         )
     return rows, tooltip_payloads
+
+
+def _comparison_cell_status(report, field, field_result, missing_items):
+    if (field.disclosure_code, field.field_label) in missing_items:
+        return "missing"
+    if not report.analysis_result:
+        return "missing"
+    if not field_result:
+        return "missing"
+    return "complete" if field_result.get("status") == "complete" else "missing"
 
 
 @login_required
