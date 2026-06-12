@@ -204,6 +204,59 @@ class ReportUploadTests(TestCase):
         self.assertNotContains(response, "<small>1,234 tCO2e</small>")
         self.assertNotContains(response, "distribution")
 
+    def test_compare_uses_analysis_field_results_for_legacy_reports(self):
+        GRIRequiredField.objects.update(is_active=False)
+        GRIRequiredField.objects.update_or_create(
+            disclosure_code="305-1",
+            field_key="S1_1",
+            defaults={
+                "field_label": "S1-1 新版 Excel 欄位",
+                "is_required": True,
+                "is_active": True,
+            },
+        )
+        report = Report.objects.create(
+            organization=self.organization,
+            company_name="Tenant A",
+            report_year=2025,
+            title="Legacy Compare Report",
+            status="completed",
+        )
+        result = AnalysisResult.objects.create(report=report, total_score=70, confidence_score=80, raw_output={"score_source": "rule_engine"})
+        DisclosureScore.objects.create(
+            analysis_result=result,
+            disclosure_code="305-1",
+            status="partial",
+            agent_output={
+                "field_results": [
+                    {
+                        "field_key": "S1_Total_Emissions",
+                        "field_label": "排放總量",
+                        "status": "complete",
+                    },
+                    {
+                        "field_key": "S1_Base_Year",
+                        "field_label": "基準年",
+                        "status": "missing",
+                    },
+                ]
+            },
+        )
+        MissingItem.objects.create(
+            analysis_result=result,
+            disclosure_code="305-1",
+            item_name="基準年",
+            severity="high",
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(f"/reports/compare/?report_ids={report.id}&export=csv")
+        content = response.content.decode("utf-8-sig")
+
+        self.assertIn("排放總量,complete", content)
+        self.assertIn("基準年,missing", content)
+        self.assertNotIn("S1-1 新版 Excel 欄位", content)
+
     def test_download_original_and_generated_reports(self):
         report = Report.objects.create(
             organization=self.organization,

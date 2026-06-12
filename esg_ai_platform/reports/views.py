@@ -1,5 +1,6 @@
 import csv
 from decimal import Decimal, InvalidOperation
+from types import SimpleNamespace
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -52,8 +53,8 @@ def _field_meaning(field):
 
 
 def _comparison_rows(reports):
-    required_fields = list(GRIRequiredField.objects.filter(is_active=True, is_required=True).order_by("disclosure_code", "sort_order"))
     field_results_by_report = {}
+    comparison_fields = {}
     report_missing = {
         report.id: {
             (item.disclosure_code, item.item_name)
@@ -69,22 +70,37 @@ def _comparison_rows(reports):
         if result:
             for disclosure_score in result.disclosure_scores.all():
                 for field_result in disclosure_score.agent_output.get("field_results", []):
-                    field_map[(disclosure_score.disclosure_code, field_result.get("field_label", ""))] = field_result
+                    field_key = field_result.get("field_key", "")
+                    field_label = field_result.get("field_label", "")
+                    row_key = (disclosure_score.disclosure_code, field_key or field_label)
+                    if row_key not in comparison_fields:
+                        comparison_fields[row_key] = _comparison_field_definition(disclosure_score.disclosure_code, field_key, field_label)
+                    if field_key:
+                        field_map[(disclosure_score.disclosure_code, field_key)] = field_result
+                    if field_label:
+                        field_map[(disclosure_score.disclosure_code, field_label)] = field_result
+            for missing_item in result.missing_items.all():
+                row_key = (missing_item.disclosure_code, missing_item.item_name)
+                if row_key not in comparison_fields:
+                    comparison_fields[row_key] = _comparison_field_definition(missing_item.disclosure_code, "", missing_item.item_name)
         field_results_by_report[report.id] = field_map
+    if not comparison_fields:
+        for field in GRIRequiredField.objects.filter(is_active=True, is_required=True).order_by("disclosure_code", "sort_order"):
+            comparison_fields[(field.disclosure_code, field.field_key)] = field
     rows = []
     tooltip_payloads = {}
-    for field in required_fields:
+    for field in comparison_fields.values():
         label = field.field_label
-        key = (field.disclosure_code, label)
         disclosures = []
         for report in reports:
-            is_missing = key in report_missing.get(report.id, set())
-            if not is_missing:
+            field_result = _comparison_field_result(field_results_by_report.get(report.id, {}), field)
+            status = _comparison_cell_status(field, field_result, report_missing.get(report.id, set()))
+            if status == "complete":
                 disclosures.append(f"{report.company_name} {report.report_year}")
         cells = []
         for report in reports:
-            status = "missing" if key in report_missing.get(report.id, set()) else "complete"
-            field_result = field_results_by_report.get(report.id, {}).get(key, {})
+            field_result = _comparison_field_result(field_results_by_report.get(report.id, {}), field)
+            status = _comparison_cell_status(field, field_result, report_missing.get(report.id, set()))
             tooltip_key = f"{field.disclosure_code}-{field.field_key}-{report.id}"
             tooltip_payloads[tooltip_key] = {
                 "company": report.company_name,
@@ -113,6 +129,32 @@ def _comparison_rows(reports):
             }
         )
     return rows, tooltip_payloads
+
+
+def _comparison_field_definition(disclosure_code, field_key, field_label):
+    required_field = None
+    if field_key:
+        required_field = GRIRequiredField.objects.filter(disclosure_code=disclosure_code, field_key=field_key).first()
+    if not required_field and field_label:
+        required_field = GRIRequiredField.objects.filter(disclosure_code=disclosure_code, field_label=field_label).first()
+    if required_field:
+        return required_field
+    return SimpleNamespace(
+        disclosure_code=disclosure_code,
+        field_key=field_key or field_label,
+        field_label=field_label or field_key,
+        recommendation_template="",
+    )
+
+
+def _comparison_field_result(field_map, field):
+    return field_map.get((field.disclosure_code, field.field_key), field_map.get((field.disclosure_code, field.field_label), {}))
+
+
+def _comparison_cell_status(field, field_result, missing_items):
+    if field_result:
+        return "complete" if field_result.get("status") == "complete" else "missing"
+    return "missing" if (field.disclosure_code, field.field_label) in missing_items else "complete"
 
 
 @login_required
