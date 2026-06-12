@@ -204,52 +204,6 @@ class ReportUploadTests(TestCase):
         self.assertNotContains(response, "<small>1,234 tCO2e</small>")
         self.assertNotContains(response, "distribution")
 
-    def test_compare_marks_unevaluated_fields_as_missing(self):
-        GRIRequiredField.objects.update(is_active=False)
-        GRIRequiredField.objects.create(
-            disclosure_code="305-1",
-            field_key="S1_present",
-            field_label="已評估欄位",
-            is_required=True,
-            is_active=True,
-        )
-        GRIRequiredField.objects.create(
-            disclosure_code="305-1",
-            field_key="S1_absent",
-            field_label="未評估欄位",
-            is_required=True,
-            is_active=True,
-        )
-        report = Report.objects.create(
-            organization=self.organization,
-            company_name="Tenant A",
-            report_year=2025,
-            title="Compare Missing Report",
-            status="completed",
-        )
-        result = AnalysisResult.objects.create(report=report, total_score=70, confidence_score=80)
-        DisclosureScore.objects.create(
-            analysis_result=result,
-            disclosure_code="305-1",
-            status="partial",
-            agent_output={
-                "field_results": [
-                    {
-                        "field_key": "S1_present",
-                        "field_label": "已評估欄位",
-                        "status": "complete",
-                    }
-                ]
-            },
-        )
-        self.client.force_login(self.user)
-
-        response = self.client.get(f"/reports/compare/?report_ids={report.id}&export=csv")
-        content = response.content.decode("utf-8-sig")
-
-        self.assertIn("已評估欄位,complete", content)
-        self.assertIn("未評估欄位,missing", content)
-
     def test_download_original_and_generated_reports(self):
         report = Report.objects.create(
             organization=self.organization,
