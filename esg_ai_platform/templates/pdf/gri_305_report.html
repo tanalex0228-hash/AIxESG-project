@@ -22,7 +22,7 @@
   <p>{{ analysis.summary }}</p>
   {% with feedback=analysis.raw_output.llm_management_feedback conclusion=analysis.raw_output.dynamic_conclusion benchmark=analysis.raw_output.benchmark_comparison %}
   <h2>管理層評價</h2>
-  <p>AIxESG Rating：{{ feedback.overall_rating|default:"-" }}；來源：{{ feedback.source|default:"rule_engine" }}；Confidence：{{ feedback.confidence_level|default:"Low" }}；Benchmark Sample：{{ feedback.benchmark_sample|default:"0" }}</p>
+  <p>Grab Rating：{{ feedback.overall_rating|default:"-" }}；來源：{{ feedback.source|default:"rule_engine" }}；Confidence：{{ feedback.confidence_level|default:"Low" }}；Benchmark Sample：{{ feedback.benchmark_sample|default:"0" }}</p>
   <p>{{ feedback.executive_summary|default:feedback.executive_feedback|default:conclusion.executive_summary }}</p>
   <h2>同業標竿差距</h2>
   <p>{{ feedback.benchmark_commentary|default:benchmark.summary|default:"尚無標竿比較資料。" }}</p>

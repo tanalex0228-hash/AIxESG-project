@@ -58,7 +58,7 @@ class AnalysisPipelineTests(TestCase):
 
         result = run_gri_305_analysis(self.report)
 
-        self.assertEqual(result.disclosure_scores.count(), 5)
+        self.assertEqual(result.disclosure_scores.count(), 8)
         self.assertGreaterEqual(result.evidence_citations.count(), 1)
 
     def test_analysis_runner_preserves_previous_versions(self):

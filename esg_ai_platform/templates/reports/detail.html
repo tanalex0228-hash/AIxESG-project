@@ -14,7 +14,7 @@
         <button class="btn btn-primary" type="submit">重新分析</button>
       </form>
     {% endif %}
-    {% if generated_report and generated_report.file %}<a class="btn btn-success" href="{% url 'reports:download_generated' report.pk %}">下載 AIxESG 分析報告</a>{% endif %}
+    {% if generated_report and generated_report.file %}<a class="btn btn-success" href="{% url 'reports:download_generated' report.pk %}">下載 Grab 分析報告</a>{% endif %}
     {% if report.file_record and report.file_record.pdf_file %}<a class="btn btn-outline-primary" href="{% url 'reports:download_original' report.pk %}">下載原始公司 PDF</a>{% endif %}
   </div>
 </div>
@@ -30,7 +30,7 @@
 {% with conclusion=report.analysis_result.raw_output.dynamic_conclusion feedback=report.analysis_result.raw_output.llm_management_feedback benchmark=report.analysis_result.raw_output.benchmark_comparison %}
 <section class="analysis-brief mt-3">
   <div class="brief-rating">
-    <span>AIxESG Rating</span>
+    <span>Grab Rating</span>
     <strong>{{ feedback.overall_rating|default:"-" }}</strong>
     <small>{{ feedback.source|default:"rule_engine" }} · Confidence {{ feedback.confidence_level|default:"Low" }} · Sample {{ feedback.benchmark_sample|default:"0" }}</small>
   </div>

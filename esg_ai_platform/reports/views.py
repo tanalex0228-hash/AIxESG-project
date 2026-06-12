@@ -325,7 +325,7 @@ def compare_reports(request):
 
     if request.GET.get("export") == "csv":
         response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
-        response["Content-Disposition"] = 'attachment; filename="aixesg_report_comparison.csv"'
+        response["Content-Disposition"] = 'attachment; filename="grab_report_comparison.csv"'
         response.write("\ufeff")
         writer = csv.writer(response)
         writer.writerow(["GRI", "欄位", *[f"{report.company_name} {report.report_year}" for report in selected_reports]])
@@ -495,7 +495,7 @@ def ranking_reports(request):
 
 def _ranking_csv_response(metrics):
     response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
-    response["Content-Disposition"] = 'attachment; filename="aixesg_ranking.csv"'
+    response["Content-Disposition"] = 'attachment; filename="grab_ranking.csv"'
     response.write("\ufeff")
     writer = csv.writer(response)
     writer.writerow(["排名", "公司", "年度", "產業代碼", "產業名稱", "報告", "Raw Score", "PR", "Grade", "Z-score", "缺漏數", "揭露率", "分析日期"])

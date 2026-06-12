@@ -1,3 +1,4 @@
+from django.db.models import Sum
 from django.test import TestCase
 
 from analysis.services.analysis_runner import run_gri_305_analysis
@@ -13,18 +14,21 @@ class KnowledgeBaseImportTests(TestCase):
     def test_import_knowledge_base_creates_structured_rules_benchmarks_and_vectors(self):
         summary = import_knowledge_base()
 
-        self.assertEqual(summary["rules"], 5)
-        self.assertEqual(summary["weights"], 24)
-        self.assertEqual(summary["required_fields"], 27)
+        self.assertEqual(summary["rules"], 8)
+        self.assertEqual(summary["weights"], 59)
+        self.assertEqual(summary["required_fields"], 59)
         self.assertEqual(BenchmarkCompany.objects.filter(company_id__in=["TW_2395", "TW_1504", "TW_2049"]).count(), 3)
         self.assertGreaterEqual(BenchmarkGri305.objects.count(), 60)
         self.assertEqual(BenchmarkGoldStandard.objects.count(), 3)
         self.assertGreaterEqual(VectorDocument.objects.count(), 4)
         self.assertGreaterEqual(VectorChunk.objects.count(), 4)
         self.assertEqual(Embedding.objects.count(), VectorChunk.objects.count())
+        self.assertEqual(GRIScoringWeight.objects.filter(is_active=True).aggregate(total=Sum("max_score"))["total"], 100)
+        self.assertTrue(GRIDisclosureRule.objects.filter(disclosure_code="MGT").exists())
         self.assertTrue(GRIDisclosureRule.objects.filter(disclosure_code="305-1").exists())
-        self.assertTrue(GRIScoringWeight.objects.filter(disclosure_code="305-3", field_key="Categories_Breakdown").exists())
-        self.assertTrue(GRIRequiredField.objects.filter(disclosure_code="305-5", field_key="Carbon_Offsets").exists())
+        self.assertTrue(GRIDisclosureRule.objects.filter(disclosure_code="305-7").exists())
+        self.assertTrue(GRIScoringWeight.objects.filter(disclosure_code="305-3", field_key="S3_1").exists())
+        self.assertTrue(GRIRequiredField.objects.filter(disclosure_code="305-5", field_key="R_1", is_critical=True).exists())
 
     def test_rule_engine_scores_from_weights_and_creates_gap_analysis(self):
         import_knowledge_base()
@@ -53,9 +57,11 @@ class KnowledgeBaseImportTests(TestCase):
         result = run_gri_305_analysis(report)
 
         self.assertEqual(result.raw_output["score_source"], "rule_engine")
-        self.assertEqual(result.disclosure_scores.count(), 5)
+        self.assertEqual(result.disclosure_scores.count(), 8)
         self.assertGreater(result.total_score, 0)
         self.assertGreater(result.missing_items.count(), 0)
+        self.assertEqual(result.raw_output["score_reference"], "ESGxAI_GRI305評分標準與公司分類.xlsx")
+        self.assertIn("section_cap_rule", result.raw_output)
         self.assertIn("benchmark_comparison", result.raw_output)
         self.assertIn("dynamic_conclusion", result.raw_output)
         self.assertIn("Business Travel", result.raw_output["benchmark_comparison"]["missing_categories"])

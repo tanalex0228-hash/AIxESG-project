@@ -141,7 +141,7 @@ def _export_url(request, export_value):
 
 
 def _industry_missing_csv_response(industry, top_missing_items):
-    response = _csv_response(f"aixesg_{industry.code}_missing_items.csv")
+    response = _csv_response(f"grab_{industry.code}_missing_items.csv")
     writer = csv.writer(response)
     writer.writerow(["排名", "產業代碼", "產業名稱", "缺漏項目", "缺漏次數", "缺漏比例"])
     for index, item in enumerate(top_missing_items, start=1):
@@ -150,7 +150,7 @@ def _industry_missing_csv_response(industry, top_missing_items):
 
 
 def _industry_companies_csv_response(industry, snapshots):
-    response = _csv_response(f"aixesg_{industry.code}_companies.csv")
+    response = _csv_response(f"grab_{industry.code}_companies.csv")
     writer = csv.writer(response)
     writer.writerow(["公司", "年度", "產業代碼", "產業名稱", "Raw Score", "PR", "Grade", "Z-score", "缺漏數", "揭露完整度", "分析日期"])
     for item in snapshots:

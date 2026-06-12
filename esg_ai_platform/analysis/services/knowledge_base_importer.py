@@ -1,6 +1,7 @@
 import re
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from typing import cast
 
 from django.conf import settings
 from django.db import transaction
@@ -10,13 +11,7 @@ from gri.models import GRIDisclosureRule, GRIRequiredField, GRIScoringWeight
 from rag.models import Embedding, VectorChunk, VectorDocument
 from rag.services import embedding_for_text
 
-from .gri_knowledge import (
-    DISCLOSURE_RULES,
-    FIELD_KEYWORDS,
-    FIELD_LABELS,
-    REQUIRED_FIELDS,
-    SCORING_WEIGHTS,
-)
+from .gri305_excel_reference import SCORING_ITEMS, SECTION_WEIGHTS
 
 KNOWLEDGE_BASE_DIR = Path(settings.BASE_DIR) / "knowledge_base"
 FIELD_LINE_RE = re.compile(r"^\s*\*\s+\*\*(?P<key>[^*]+)\*\*:\s*(?P<value>.*)$")
@@ -120,47 +115,63 @@ def _chunk_markdown(body, max_chars=1800):
 
 
 def seed_gri_rule_tables():
-    for disclosure_code, rule in DISCLOSURE_RULES.items():
+    active_pairs = {(item["disclosure_code"], item["field_key"]) for item in SCORING_ITEMS}
+    for section in SECTION_WEIGHTS:
+        disclosure_code = "MGT" if section["section"] == "管理與報導基礎" else section["section"].split()[0]
         GRIDisclosureRule.objects.update_or_create(
             disclosure_code=disclosure_code,
             version="GRI 305:2016",
             defaults={
-                "rule_name": rule["name"],
-                "description": rule["name"],
-                "official_requirement": rule["requirement"],
-                "source_document": "Database_Rules.md",
+                "rule_name": section["section"],
+                "description": section["reason"],
+                "official_requirement": section["reason"],
+                "source_document": "ESGxAI_GRI305評分標準與公司分類.xlsx",
                 "is_active": True,
             },
         )
 
-        for sort_order, (field_key, field_label, max_score) in enumerate(SCORING_WEIGHTS[disclosure_code], start=1):
-            GRIScoringWeight.objects.update_or_create(
-                disclosure_code=disclosure_code,
-                field_key=field_key,
-                defaults={
-                    "field_label": field_label,
-                    "max_score": max_score,
-                    "sort_order": sort_order,
-                    "is_active": True,
-                },
-            )
+    sort_by_disclosure = {}
+    for item in SCORING_ITEMS:
+        disclosure_code = cast(str, item["disclosure_code"])
+        field_key = cast(str, item["field_key"])
+        sort_by_disclosure[disclosure_code] = sort_by_disclosure.get(disclosure_code, 0) + 1
+        sort_order = sort_by_disclosure[disclosure_code]
+        GRIScoringWeight.objects.update_or_create(
+            disclosure_code=disclosure_code,
+            field_key=field_key,
+            defaults={
+                "field_label": item["field_label"],
+                "max_score": Decimal(cast(str, item["max_score"])),
+                "sort_order": sort_order,
+                "is_active": True,
+            },
+        )
+        GRIRequiredField.objects.update_or_create(
+            disclosure_code=disclosure_code,
+            field_key=field_key,
+            defaults={
+                "field_label": item["field_label"],
+                "source_clause": item["source_clause"],
+                "requirement_type": item["requirement_type"],
+                "keywords": item["keywords"],
+                "patterns": [],
+                "recommendation_template": item["weight_reason"],
+                "severity": "high" if item["is_critical"] else "medium",
+                "is_critical": item["is_critical"],
+                "is_required": True,
+                "sort_order": sort_order,
+                "is_active": True,
+            },
+        )
 
-        for sort_order, field_key in enumerate(REQUIRED_FIELDS[disclosure_code], start=1):
-            label = FIELD_LABELS.get(field_key, field_key)
-            GRIRequiredField.objects.update_or_create(
-                disclosure_code=disclosure_code,
-                field_key=field_key,
-                defaults={
-                    "field_label": label,
-                    "keywords": FIELD_KEYWORDS.get(field_key, [label]),
-                    "patterns": [],
-                    "recommendation_template": f"請補充 {disclosure_code} 的「{label}」，並說明數值、年度、方法與來源。",
-                    "severity": "high" if sort_order <= 2 else "medium",
-                    "is_required": True,
-                    "sort_order": sort_order,
-                    "is_active": True,
-                },
-            )
+    for scoring_weight in GRIScoringWeight.objects.all():
+        if (scoring_weight.disclosure_code, scoring_weight.field_key) not in active_pairs:
+            scoring_weight.is_active = False
+            scoring_weight.save(update_fields=["is_active"])
+    for required_field in GRIRequiredField.objects.all():
+        if (required_field.disclosure_code, required_field.field_key) not in active_pairs:
+            required_field.is_active = False
+            required_field.save(update_fields=["is_active"])
 
 
 def import_benchmark_markdown(path):
@@ -304,7 +315,7 @@ def _company_from_path(path):
 
 
 def _gri_code_from_text(text):
-    match = re.search(r"305-[1-5]", text)
+    match = re.search(r"305-[1-7]", text)
     return match.group(0) if match else "305"
 
 
@@ -324,9 +335,9 @@ def import_knowledge_base(base_dir=None):
             benchmark_companies.append(import_benchmark_markdown(path))
         rag_chunks += import_markdown_to_rag(path)
     return {
-        "rules": GRIDisclosureRule.objects.filter(disclosure_code__startswith="305").count(),
-        "weights": GRIScoringWeight.objects.filter(disclosure_code__startswith="305").count(),
-        "required_fields": GRIRequiredField.objects.filter(disclosure_code__startswith="305").count(),
+        "rules": GRIDisclosureRule.objects.filter(is_active=True).count(),
+        "weights": GRIScoringWeight.objects.filter(is_active=True).count(),
+        "required_fields": GRIRequiredField.objects.filter(is_active=True).count(),
         "benchmark_companies": len({company.id for company in benchmark_companies}),
         "benchmark_rows": BenchmarkGri305.objects.count(),
         "gold_standards": BenchmarkGoldStandard.objects.count(),

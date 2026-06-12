@@ -18,13 +18,16 @@ from .industry_metrics import recalculate_report_industry_metrics
 from .knowledge_base_importer import seed_gri_rule_tables
 from .llm_feedback import build_management_feedback
 
-SCORE_CODES = ["305-1", "305-2", "305-3", "305-4", "305-5"]
+SCORE_CODES = ["MGT", "305-1", "305-2", "305-3", "305-4", "305-5", "305-6", "305-7"]
 DISCLOSURE_ANCHORS = {
+    "MGT": ["管理方法", "GRI 3-3", "重大主題", "政策", "承諾", "省略理由", "內容索引"],
     "305-1": ["305-1", "scope 1", "範疇一", "直接溫室氣體", "直接排放"],
     "305-2": ["305-2", "scope 2", "範疇二", "能源間接", "外購電力"],
     "305-3": ["305-3", "scope 3", "範疇三", "其他間接", "價值鏈"],
     "305-4": ["305-4", "密集度", "intensity"],
     "305-5": ["305-5", "減量", "reduction", "減少"],
+    "305-6": ["305-6", "ODS", "臭氧層", "ozone-depleting", "ozone depleting"],
+    "305-7": ["305-7", "NOx", "SOx", "VOC", "PM", "其他氣體", "空氣污染物"],
 }
 FIELD_KEYWORD_OVERRIDES = {
     "Location_Based": ["location-based", "location based", "地點基礎", "地域基礎", "所在地基礎"],
@@ -60,16 +63,16 @@ def _match_keywords(text, keywords):
 
 
 def _numeric_signal(text):
-    return bool(re.search(r"\d[\d,]*(?:\.\d+)?\s*(?:tco2e|公噸|噸|%)?", text, re.IGNORECASE))
+    return bool(re.search(r"\d[\d,]*(?:\.\d+)?\s*(?:tco2e|公噸|噸|%|ppm|kg|公斤)?", text, re.IGNORECASE))
 
 
 def _detected_value(text):
-    match = re.search(r"\d[\d,]*(?:\.\d+)?\s*(?:tco2e|公噸|噸|%)?", text, re.IGNORECASE)
+    match = re.search(r"\d[\d,]*(?:\.\d+)?\s*(?:tco2e|公噸|噸|%|ppm|kg|公斤)?", text, re.IGNORECASE)
     return match.group(0) if match else ""
 
 
 def _scoped_chunks(chunks, disclosure_code):
-    anchors = DISCLOSURE_ANCHORS[disclosure_code]
+    anchors = DISCLOSURE_ANCHORS.get(disclosure_code, [])
     scoped = []
     for chunk in chunks:
         text = chunk.chunk_text
@@ -87,11 +90,34 @@ def _field_keywords(required_field):
     return FIELD_KEYWORD_OVERRIDES.get(required_field.field_key, required_field.keywords or [required_field.field_label])
 
 
+def _field_requires_numeric(required_field):
+    text = f"{required_field.field_label} {required_field.source_clause}".lower()
+    numeric_terms = [
+        "量化",
+        "公噸",
+        "co2e",
+        "排放量",
+        "總量",
+        "數量",
+        "比值",
+        "強度",
+        "減量",
+        "百分比",
+        "%",
+        "nox",
+        "sox",
+        "voc",
+        "pm",
+        "ods",
+    ]
+    return any(term in text for term in numeric_terms)
+
+
 def _find_field_evidence(scoped_chunks, required_field):
     keywords = _field_keywords(required_field)
     for chunk, scoped_text in scoped_chunks:
         if _match_keywords(scoped_text, keywords):
-            if required_field.field_key in {"S1_Total_Emissions", "Location_Based", "Market_Based", "Total_Emissions"}:
+            if _field_requires_numeric(required_field):
                 if not _numeric_signal(scoped_text):
                     continue
             return {
@@ -148,6 +174,8 @@ def _gold_standard_for(disclosure_code):
 def _recommendation_for_missing(missing_item, disclosure_code):
     if missing_item.field_key in FIELD_RECOMMENDATIONS:
         return FIELD_RECOMMENDATIONS[missing_item.field_key]
+    if getattr(missing_item, "recommendation_template", ""):
+        return missing_item.recommendation_template
     standards = _gold_standard_for(disclosure_code)
     if standards:
         standard = standards[0]
@@ -164,6 +192,13 @@ def _status(earned, max_score):
     if earned < max_score:
         return "partial"
     return "complete"
+
+
+def _apply_critical_cap(earned, max_score, critical_zero_count):
+    if not critical_zero_count:
+        return earned, False
+    cap = (max_score * Decimal("0.40")).quantize(Decimal("0.01"))
+    return min(earned, cap), earned > cap
 
 
 def _build_benchmark_comparison(report, detected_categories):
@@ -238,18 +273,24 @@ def run_rule_engine_analysis(report, analysis_job=None):
         max_score = sum((weight.max_score for weight in weights), Decimal("0"))
         field_results = []
         disclosure_evidence = []
+        critical_zero_count = 0
 
         for weight in weights:
             required_field = required_fields.get(weight.field_key)
             evidence = _find_field_evidence(scoped_chunks, required_field) if required_field else None
             field_score = weight.max_score if evidence else Decimal("0")
             earned += field_score
+            if required_field and required_field.is_critical and not evidence:
+                critical_zero_count += 1
             field_result = {
                 "field_key": weight.field_key,
                 "field_label": weight.field_label,
                 "max_score": float(weight.max_score),
                 "score": float(field_score),
+                "rating": 4 if evidence else 0,
                 "status": "complete" if evidence else "missing",
+                "is_critical": bool(required_field.is_critical) if required_field else False,
+                "source_clause": required_field.source_clause if required_field else "",
                 "detected_value": _detected_value(evidence["quoted_text"]) if evidence else "",
                 "page_number": evidence["chunk"].page_start if evidence else None,
                 "evidence_excerpt": evidence["quoted_text"][:240] if evidence else "",
@@ -258,19 +299,25 @@ def run_rule_engine_analysis(report, analysis_job=None):
             if evidence:
                 disclosure_evidence.append((weight, evidence))
 
-        status = _status(earned, max_score)
+        capped_earned, cap_applied = _apply_critical_cap(earned, max_score, critical_zero_count)
+        status = _status(capped_earned, max_score)
         disclosure_score = DisclosureScore.objects.create(
             analysis_result=result,
             disclosure_code=disclosure_code,
             status=status,
-            raw_score=earned,
-            weighted_score=earned,
+            raw_score=capped_earned,
+            weighted_score=capped_earned,
             weight_percent=max_score,
             confidence=Decimal("0.9") if status == "complete" else Decimal("0.62") if status == "partial" else Decimal("0.35"),
-            summary=f"{disclosure_code} 得分 {earned}/{max_score}，由規則權重表計算。",
-            agent_output={"field_results": field_results},
+            summary=f"{disclosure_code} 得分 {capped_earned}/{max_score}，由 Excel 權重表與關鍵項上限規則計算。",
+            agent_output={
+                "field_results": field_results,
+                "uncapped_score": float(earned),
+                "critical_zero_count": critical_zero_count,
+                "section_cap_applied": cap_applied,
+            },
         )
-        total_score += earned
+        total_score += capped_earned
         confidence_values.append(disclosure_score.confidence)
 
         for weight, evidence in disclosure_evidence:
@@ -318,9 +365,12 @@ def run_rule_engine_analysis(report, analysis_job=None):
         score_payload.append(
             {
                 "disclosure_code": disclosure_code,
-                "score": float(earned),
+                "score": float(capped_earned),
+                "uncapped_score": float(earned),
                 "max_score": float(max_score),
                 "status": status,
+                "critical_zero_count": critical_zero_count,
+                "section_cap_applied": cap_applied,
                 "fields": field_results,
             }
         )
@@ -335,6 +385,9 @@ def run_rule_engine_analysis(report, analysis_job=None):
     result.summary = conclusion["executive_summary"]
     result.raw_output = {
         "score_source": "rule_engine",
+        "score_reference": "ESGxAI_GRI305評分標準與公司分類.xlsx",
+        "score_scale": "Excel 0-4 評分邏輯映射為欄位權重：目前自動規則找到證據視為 4 分，缺漏視為 0 分。",
+        "section_cap_rule": "適用章節若任一關鍵揭露項目為 0 分，該章節最高僅得適用權重 40%。",
         "scores": score_payload,
         "benchmark_comparison": benchmark_comparison,
         "gold_standard_recommendations": {
