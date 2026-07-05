@@ -1,0 +1,50 @@
+name: aixesg-app
+
+services:
+  redis:
+    image: redis:8-alpine
+    container_name: aixesg_redis
+    restart: unless-stopped
+    volumes:
+      - aixesg_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    image: aixesg-web:latest
+    build:
+      context: ../../..
+      dockerfile: deploy/Dockerfile
+    container_name: aixesg_web
+    restart: unless-stopped
+    env_file:
+      - .env.app
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "100.72.157.21:8020:8000"
+    volumes:
+      - aixesg_media:/app/media
+      - aixesg_staticfiles:/app/staticfiles
+
+  worker:
+    image: aixesg-web:latest
+    container_name: aixesg_worker
+    restart: unless-stopped
+    env_file:
+      - .env.app
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A config worker -l info --pool=solo --concurrency=1
+    volumes:
+      - aixesg_media:/app/media
+
+volumes:
+  aixesg_media:
+  aixesg_staticfiles:
+  aixesg_redis_data:

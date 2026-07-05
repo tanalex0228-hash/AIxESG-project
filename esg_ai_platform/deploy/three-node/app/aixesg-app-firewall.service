@@ -1,0 +1,13 @@
+[Unit]
+Description=AIxESG app Docker firewall
+After=docker.service tailscaled.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/aixesg-app-firewall.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+
