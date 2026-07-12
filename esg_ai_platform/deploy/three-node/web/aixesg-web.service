@@ -1,0 +1,15 @@
+[Unit]
+Description=AIxESG web proxy and public funnel
+After=docker.service tailscaled.service network-online.target
+Wants=docker.service tailscaled.service network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -lc 'for i in {1..60}; do ip addr show tailscale0 | grep -q "100.125.1.6" && break; sleep 2; done; docker start aixesg_nginx; for i in {1..30}; do curl -fsS http://127.0.0.1/ >/dev/null 2>&1 && break; sleep 1; done; tailscale funnel --bg --yes 80'
+ExecStop=/usr/bin/docker stop aixesg_nginx
+TimeoutStartSec=150
+
+[Install]
+WantedBy=multi-user.target
+
