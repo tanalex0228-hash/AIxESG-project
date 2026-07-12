@@ -1,0 +1,14 @@
+[Unit]
+Description=AIxESG application containers
+After=docker.service tailscaled.service network-online.target aixesg-app-firewall.service
+Wants=docker.service tailscaled.service network-online.target aixesg-app-firewall.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -lc 'ready=0; for i in {1..60}; do ip addr show tailscale0 | grep -q "100.72.157.21" && ready=1 && break; sleep 2; done; test "$ready" = 1; docker start aixesg_redis aixesg_web aixesg_worker; /usr/local/sbin/aixesg-app-firewall.sh; app_ready=0; for i in {1..30}; do curl -fLsS http://100.72.157.21:8020/login/ >/dev/null 2>&1 && app_ready=1 && break; sleep 1; done; test "$app_ready" = 1'
+ExecStop=/usr/bin/docker stop aixesg_worker aixesg_web aixesg_redis
+TimeoutStartSec=150
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+name: aixesg-db
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: aixesg_postgres
+    restart: unless-stopped
+    env_file:
+      - .env.db
+    ports:
+      - "100.92.162.59:5432:5432"
+    volumes:
+      - aixesg_postgres_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  aixesg_postgres_data:
+
