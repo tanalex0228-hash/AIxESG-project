@@ -6,7 +6,7 @@ Wants=docker.service tailscaled.service network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/bash -lc 'for i in {1..60}; do ip addr show tailscale0 | grep -q "100.92.162.59" && break; sleep 2; done; cd /home/alex/aixesg/db && ./deploy_db.sh'
+ExecStart=/bin/bash -lc 'ready=0; for i in {1..60}; do ip addr show tailscale0 | grep -q "100.92.162.59" && ready=1 && break; sleep 2; done; test "$ready" = 1; cd /home/alex/aixesg/db && ./deploy_db.sh'
 ExecStop=/usr/bin/docker stop aixesg_postgres
 TimeoutStartSec=150
 
